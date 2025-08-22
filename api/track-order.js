@@ -21,8 +21,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // GraphQL query untuk mendapatkan data order
-    // Diperbaiki untuk mencocokkan struktur yang sesuai dengan respons Postman
+    // GraphQL query yang diperbaiki - sesuai dengan schema Shopify API
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -35,14 +34,12 @@ export default async function handler(req, res) {
                 displayName
               }
               fulfillments(first: 10) {
-                edges {
-                  node {
-                    id
-                    status
-                    trackingInfo {
-                      company
-                      number
-                    }
+                nodes {
+                  id
+                  status
+                  trackingInfo {
+                    company
+                    number
                   }
                 }
               }
@@ -79,6 +76,12 @@ export default async function handler(req, res) {
     // Debug: Log respons untuk memeriksa struktur
     console.log('Shopify API response:', JSON.stringify(data, null, 2));
 
+    // Cek jika ada error dari GraphQL
+    if (data.errors) {
+      console.error('GraphQL errors:', data.errors);
+      return res.status(400).json({ error: 'Query error: ' + data.errors[0].message });
+    }
+
     // Cek jika order tidak ditemukan
     if (!data.data || !data.data.orders || !data.data.orders.edges.length) {
       return res.status(404).json({ error: 'Order tidak ditemukan' });
@@ -94,10 +97,9 @@ export default async function handler(req, res) {
       trackingInfo: []
     };
 
-    // Ambil informasi tracking dari fulfillments
-    if (order.fulfillments && order.fulfillments.edges.length > 0) {
-      order.fulfillments.edges.forEach(fulfillmentEdge => {
-        const fulfillment = fulfillmentEdge.node;
+    // Ambil informasi tracking dari fulfillments (menggunakan nodes bukan edges)
+    if (order.fulfillments && order.fulfillments.nodes.length > 0) {
+      order.fulfillments.nodes.forEach(fulfillment => {
         if (fulfillment.trackingInfo && fulfillment.trackingInfo.length > 0) {
           fulfillment.trackingInfo.forEach(tracking => {
             result.trackingInfo.push({
