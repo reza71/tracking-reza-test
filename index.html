@@ -2,17 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tracking Order - Reza Test</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Tracking Order</title>
 </head>
 <body>
   <h1>Tracking Order</h1>
-  <input type="text" id="orderInput" placeholder="Masukkan Order Name">
+  <input id="orderInput" type="text" placeholder="Masukkan nomor order">
   <button onclick="trackOrder()">Track</button>
 
   <pre id="result"></pre>
 
-  <script src="script.js"></script>
+  <script>
+    async function trackOrder() {
+      const orderName = document.getElementById("orderInput").value;
+
+      if (!orderName) {
+        document.getElementById("result").innerText = "⚠️ Masukkan nomor order!";
+        return;
+      }
+
+      const res = await fetch(`/api/getOrder?orderName=${orderName}`);
+      const data = await res.json();
+
+      document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+    }
+  </script>
 </body>
 </html>
