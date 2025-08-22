@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lacak Pesanan test keberapa ini sampe lupa</title>
+    <title>Lacak Pesanan Shopify</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -87,14 +87,14 @@
             font-weight: bold;
         }
         
-        .processing {
-            background-color: #ffeaa7;
-            color: #d35400;
-        }
-        
         .fulfilled {
             background-color: #a3e4d7;
             color: #27ae60;
+        }
+        
+        .processing {
+            background-color: #ffeaa7;
+            color: #d35400;
         }
         
         .unknown {
@@ -127,15 +127,6 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-        
-        .debug-info {
-            background-color: #f8f9fa;
-            border-left: 4px solid #3498db;
-            padding: 10px;
-            margin-top: 15px;
-            font-size: 12px;
-            display: none;
         }
     </style>
 </head>
@@ -172,17 +163,19 @@
             
             // Fungsi untuk mendapatkan class status berdasarkan status order
             function getStatusClass(status) {
-                if (status === 'fulfilled') return 'fulfilled';
-                if (status === 'partial' || status === 'in_progress') return 'processing';
+                if (status === 'FULFILLED' || status === 'fulfilled') return 'fulfilled';
+                if (status === 'IN_PROGRESS' || status === 'partial') return 'processing';
                 return 'unknown';
             }
             
             // Fungsi untuk mendapatkan teks status yang lebih user-friendly
             function getStatusText(status) {
                 const statusMap = {
+                    'FULFILLED': 'Terkirim',
                     'fulfilled': 'Terkirim',
+                    'IN_PROGRESS': 'Dalam Proses',
                     'partial': 'Sebagian Terkirim',
-                    'in_progress': 'Dalam Proses',
+                    'UNFULFILLED': 'Belum Diproses',
                     'null': 'Belum Diproses',
                     'unknown': 'Tidak Diketahui'
                 };
