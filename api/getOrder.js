@@ -5,47 +5,33 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Order number is required" });
   }
 
+  // Convert ke format Shopify name (#xxxx)
+  const orderName = `#${orderNumber}`;
+
   try {
-    // Shopify GraphQL Admin API URL
-    const endpoint = `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2025-01/graphql.json`;
-
-    // Query ambil fulfillment + tracking info
-    const query = `
-      query($query: String!) {
-        orders(first: 1, query: $query) {
-          edges {
-            node {
-              name
-              fulfillmentStatus
-              fulfillments(first: 5) {
-                trackingInfo(first: 5) {
-                  number
-                  url
-                  company
-                }
-              }
-            }
-          }
-        }
+    const response = await fetch(
+      `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/${process.env.SHOPIFY_API_VERSION}/orders.json?name=${encodeURIComponent(orderName)}`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_API_KEY,
+          "Content-Type": "application/json",
+        },
       }
-    `;
-
-    const variables = { query: `name:${orderNumber}` };
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_API_KEY,
-      },
-      body: JSON.stringify({ query, variables }),
-    });
+    );
 
     const data = await response.json();
-    return res.status(200).json(data);
 
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Internal Server Error" });
+    if (!data.orders || data.orders.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const order = data.orders[0];
+    return res.status(200).json({
+      order_number: order.order_number,
+      name: order.name,
+      fulfillments: order.fulfillments || [],
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 }
