@@ -123,6 +123,15 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        .debug-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 12px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -130,7 +139,7 @@
     
     <div class="card">
         <h2>Cek Status Pesanan</h2>
-        <input type="text" id="orderNumber" placeholder="Masukkan nomor order (contoh: 1312)">
+        <input type="text" id="orderNumber" placeholder="Masukkan nomor order (contoh: 1312)" value="1312">
         <button id="trackBtn">Lacak Pesanan</button>
         
         <div id="result"></div>
@@ -142,6 +151,9 @@
             <input type="text" id="phone" placeholder="5 digit terakhir nomor HP" maxlength="5">
             <button id="cekResiBtn">Lacak Resi di JNE</button>
         </div>
+        
+        <button id="debugBtn" style="margin-top: 20px; background-color: #95a5a6; font-size: 12px;">Debug Info</button>
+        <div id="debugInfo" class="debug-info"></div>
     </div>
 
     <script>
@@ -153,8 +165,17 @@
             const resiInput = document.getElementById('resi');
             const phoneInput = document.getElementById('phone');
             const cekResiBtn = document.getElementById('cekResiBtn');
+            const debugBtn = document.getElementById('debugBtn');
+            const debugInfo = document.getElementById('debugInfo');
             
             let currentResi = '';
+            let debugData = {};
+            
+            // Toggle debug info
+            debugBtn.addEventListener('click', function() {
+                debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+                debugInfo.innerHTML = `<pre>${JSON.stringify(debugData, null, 2)}</pre>`;
+            });
             
             // Fungsi untuk melacak order
             trackBtn.addEventListener('click', async function() {
@@ -187,9 +208,10 @@
                     });
                     
                     const data = await response.json();
+                    debugData = data; // Simpan untuk debugging
                     
                     if (!response.ok) {
-                        throw new Error(data.error || 'Gagal mengambil data order');
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
                     }
                     
                     if (data.error) {
@@ -210,7 +232,7 @@
                         const tracking = data.trackingInfo[0];
                         html += `
                             <p><strong>Perusahaan Pengiriman:</strong> ${tracking.company}</p>
-                            <p><strong>Nomori Resi:</strong> ${tracking.number}</p>
+                            <p><strong>Nomor Resi:</strong> ${tracking.number}</p>
                         `;
                         
                         // Simpan nomor resi untuk digunakan nanti
@@ -222,6 +244,7 @@
                     } else {
                         // Sembunyikan form tracking jika tidak ada resi
                         trackingForm.classList.add('hidden');
+                        html += `<p>Belum ada informasi pengiriman untuk pesanan ini.</p>`;
                     }
                     
                     html += `</div>`;
@@ -229,7 +252,12 @@
                     
                 } catch (error) {
                     console.error('Error:', error);
-                    resultDiv.innerHTML = `<div class="error">${error.message || 'Gagal mengambil data order. Pastikan nomor order benar.'}</div>`;
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <p>${error.message || 'Gagal mengambil data order. Pastikan nomor order benar.'}</p>
+                            <p>Silakan coba lagi atau hubungi administrator.</p>
+                        </div>
+                    `;
                 } finally {
                     // Aktifkan kembali tombol
                     trackBtn.disabled = false;
