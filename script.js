@@ -1,20 +1,23 @@
-async function trackOrder() {
-  const orderName = document.getElementById("orderInput").value;
-  const resultEl = document.getElementById("result");
+document.getElementById("trackBtn").addEventListener("click", async () => {
+  const orderNumber = document.getElementById("orderNumber").value;
+  const resultDiv = document.getElementById("result");
 
-  if (!orderName) {
-    resultEl.textContent = "Tolong masukkan Order Name!";
+  if (!orderNumber) {
+    resultDiv.textContent = "Harap masukkan nomor order.";
     return;
   }
 
-  resultEl.textContent = "Loading...";
-
   try {
-    const res = await fetch(`/api/getOrder?orderName=${orderName}`);
+    const res = await fetch(`/api/getOrder?orderNumber=${orderNumber}`);
     const data = await res.json();
 
-    resultEl.textContent = JSON.stringify(data, null, 2);
+    if (data.error) {
+      resultDiv.textContent = `Error: ${data.error}`;
+    } else {
+      resultDiv.textContent = JSON.stringify(data, null, 2);
+    }
   } catch (err) {
-    resultEl.textContent = "Error: " + err.message;
+    resultDiv.textContent = "Gagal fetch data order.";
+    console.error(err);
   }
-}
+});
