@@ -1,20 +1,220 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Tracking Order</title>
-  <script defer src="script.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 2rem; }
-    input, button { padding: 0.5rem; margin: 0.5rem 0; }
-    #result { margin-top: 1rem; white-space: pre-wrap; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lacak Pesanan Shopify</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        
+        .order-info {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .tracking-form {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .processing {
+            background-color: #ffeaa7;
+            color: #d35400;
+        }
+        
+        .success {
+            background-color: #a3e4d7;
+            color: #27ae60;
+        }
+    </style>
 </head>
 <body>
-  <h1>Tracking Order</h1>
-  <input type="text" id="orderNumber" placeholder="Masukkan nomor order">
-  <button id="trackBtn">Track</button>
+    <h1>Lacak Pesanan Shopify</h1>
+    
+    <div class="card">
+        <h2>Cek Status Pesanan</h2>
+        <input type="text" id="orderNumber" placeholder="Masukkan nomor order (contoh: 1312)">
+        <button id="trackBtn">Lacak Pesanan</button>
+        
+        <div id="result"></div>
+        
+        <div id="trackingForm" class="tracking-form hidden">
+            <h2>Lacak Nomor Resi</h2>
+            <p>Masukkan nomor resi dan 5 digit terakhir nomor HP yang digunakan saat order:</p>
+            <input type="text" id="resi" placeholder="Nomor resi">
+            <input type="text" id="phone" placeholder="5 digit terakhir nomor HP" maxlength="5">
+            <button id="cekResiBtn">Lacak Resi di JNE</button>
+        </div>
+    </div>
 
-  <div id="result"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const orderInput = document.getElementById('orderNumber');
+            const trackBtn = document.getElementById('trackBtn');
+            const resultDiv = document.getElementById('result');
+            const trackingForm = document.getElementById('trackingForm');
+            const resiInput = document.getElementById('resi');
+            const phoneInput = document.getElementById('phone');
+            const cekResiBtn = document.getElementById('cekResiBtn');
+            
+            let currentResi = '';
+            
+            // Fungsi untuk melacak order
+            trackBtn.addEventListener('click', async function() {
+                const orderNumber = orderInput.value.trim();
+                
+                if (!orderNumber) {
+                    alert('Masukkan nomor order terlebih dahulu');
+                    return;
+                }
+                
+                try {
+                    // Mengambil data order dari Shopify Admin API
+                    const response = await fetch('/api/track-order', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ orderNumber })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Gagal mengambil data order');
+                    }
+                    
+                    const orderData = await response.json();
+                    
+                    if (orderData.error) {
+                        resultDiv.innerHTML = `<p class="error">${orderData.error}</p>`;
+                        return;
+                    }
+                    
+                    // Menampilkan informasi order
+                    let html = `
+                        <div class="order-info">
+                            <h3>Informasi Pesanan #${orderData.orderNumber}</h3>
+                            <p><strong>Nama:</strong> ${orderData.customerName}</p>
+                            <p><strong>Status:</strong> <span class="status ${orderData.status === 'SUCCESS' ? 'success' : 'processing'}">${orderData.status === 'SUCCESS' ? 'Terkirim' : 'Dalam Proses'}</span></p>
+                    `;
+                    
+                    // Jika sudah dikirim, tampilkan informasi resi
+                    if (orderData.status === 'SUCCESS' && orderData.trackingInfo && orderData.trackingInfo.length > 0) {
+                        const tracking = orderData.trackingInfo[0];
+                        html += `
+                            <p><strong>Perusahaan Pengiriman:</strong> ${tracking.company}</p>
+                            <p><strong>Nomor Resi:</strong> ${tracking.number}</p>
+                        `;
+                        
+                        // Simpan nomor resi untuk digunakan nanti
+                        currentResi = tracking.number;
+                        
+                        // Tampilkan form untuk melacak resi
+                        trackingForm.classList.remove('hidden');
+                        resiInput.value = tracking.number;
+                    }
+                    
+                    html += `</div>`;
+                    resultDiv.innerHTML = html;
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    resultDiv.innerHTML = `<p class="error">Gagal mengambil data order. Pastikan nomor order benar.</p>`;
+                }
+            });
+            
+            // Fungsi untuk melacak resi di JNE
+            cekResiBtn.addEventListener('click', function() {
+                let resi = resiInput.value.trim();
+                let phone = phoneInput.value.trim();
+                
+                if (resi === "" || phone === "") {
+                    alert("Isi nomor resi dan 5 digit terakhir nomor HP.");
+                    return;
+                }
+                
+                // Jika user mengubah nomor resi, gunakan yang diinput
+                // Jika tidak, gunakan nomor resi dari order
+                if (!resi && currentResi) {
+                    resi = currentResi;
+                    resiInput.value = resi;
+                }
+                
+                // Validasi 5 digit terakhir nomor HP
+                if (phone.length !== 5 || isNaN(phone)) {
+                    alert("Masukkan 5 digit terakhir nomor HP dengan benar.");
+                    return;
+                }
+                
+                // Redirect ke halaman tracking JNE
+                let jneUrl = `https://cekresi.jne.co.id/${resi}?verify=${phone}`;
+                window.open(jneUrl, '_blank');
+            });
+        });
+    </script>
 </body>
 </html>
