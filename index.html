@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lacak Pesanan Shopify</title>
+    <title>Lacak Pesanan test keberapa ini sampe lupa</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -92,9 +92,14 @@
             color: #d35400;
         }
         
-        .success {
+        .fulfilled {
             background-color: #a3e4d7;
             color: #27ae60;
+        }
+        
+        .unknown {
+            background-color: #bdc3c7;
+            color: #7f8c8d;
         }
         
         .error {
@@ -151,9 +156,6 @@
             <input type="text" id="phone" placeholder="5 digit terakhir nomor HP" maxlength="5">
             <button id="cekResiBtn">Lacak Resi di JNE</button>
         </div>
-        
-        <button id="debugBtn" style="margin-top: 20px; background-color: #95a5a6; font-size: 12px;">Debug Info</button>
-        <div id="debugInfo" class="debug-info"></div>
     </div>
 
     <script>
@@ -165,17 +167,27 @@
             const resiInput = document.getElementById('resi');
             const phoneInput = document.getElementById('phone');
             const cekResiBtn = document.getElementById('cekResiBtn');
-            const debugBtn = document.getElementById('debugBtn');
-            const debugInfo = document.getElementById('debugInfo');
             
             let currentResi = '';
-            let debugData = {};
             
-            // Toggle debug info
-            debugBtn.addEventListener('click', function() {
-                debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
-                debugInfo.innerHTML = `<pre>${JSON.stringify(debugData, null, 2)}</pre>`;
-            });
+            // Fungsi untuk mendapatkan class status berdasarkan status order
+            function getStatusClass(status) {
+                if (status === 'fulfilled') return 'fulfilled';
+                if (status === 'partial' || status === 'in_progress') return 'processing';
+                return 'unknown';
+            }
+            
+            // Fungsi untuk mendapatkan teks status yang lebih user-friendly
+            function getStatusText(status) {
+                const statusMap = {
+                    'fulfilled': 'Terkirim',
+                    'partial': 'Sebagian Terkirim',
+                    'in_progress': 'Dalam Proses',
+                    'null': 'Belum Diproses',
+                    'unknown': 'Tidak Diketahui'
+                };
+                return statusMap[status] || status;
+            }
             
             // Fungsi untuk melacak order
             trackBtn.addEventListener('click', async function() {
@@ -208,7 +220,6 @@
                     });
                     
                     const data = await response.json();
-                    debugData = data; // Simpan untuk debugging
                     
                     if (!response.ok) {
                         throw new Error(data.error || `HTTP error! status: ${response.status}`);
@@ -223,24 +234,27 @@
                     let html = `
                         <div class="order-info">
                             <h3>Informasi Pesanan #${data.orderNumber}</h3>
-                            <p><strong>Nama:</strong> ${data.customerName}</p>
-                            <p><strong>Status:</strong> <span class="status ${data.status === 'SUCCESS' || data.status === 'FULFILLED' ? 'success' : 'processing'}">${data.status === 'SUCCESS' || data.status === 'FULFILLED' ? 'Terkirim' : 'Dalam Proses'}</span></p>
+                            <p><strong>Nama Pelanggan:</strong> ${data.customerName}</p>
+                            <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
                     `;
                     
                     // Jika sudah dikirim, tampilkan informasi resi
-                    if ((data.status === 'SUCCESS' || data.status === 'FULFILLED') && data.trackingInfo && data.trackingInfo.length > 0) {
-                        const tracking = data.trackingInfo[0];
-                        html += `
-                            <p><strong>Perusahaan Pengiriman:</strong> ${tracking.company}</p>
-                            <p><strong>Nomor Resi:</strong> ${tracking.number}</p>
-                        `;
-                        
-                        // Simpan nomor resi untuk digunakan nanti
-                        currentResi = tracking.number;
+                    if (data.trackingInfo && data.trackingInfo.length > 0) {
+                        data.trackingInfo.forEach((tracking, index) => {
+                            html += `
+                                <p><strong>Perusahaan Pengiriman ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.company}</p>
+                                <p><strong>Nomor Resi ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.number}</p>
+                            `;
+                            
+                            // Simpan nomor resi pertama untuk digunakan nanti
+                            if (index === 0) {
+                                currentResi = tracking.number;
+                            }
+                        });
                         
                         // Tampilkan form untuk melacak resi
                         trackingForm.classList.remove('hidden');
-                        resiInput.value = tracking.number;
+                        resiInput.value = currentResi;
                     } else {
                         // Sembunyikan form tracking jika tidak ada resi
                         trackingForm.classList.add('hidden');
