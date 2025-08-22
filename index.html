@@ -3,28 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>Tracking Order</title>
+  <script defer src="script.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; }
+    input, button { padding: 0.5rem; margin: 0.5rem 0; }
+    #result { margin-top: 1rem; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
   <h1>Tracking Order</h1>
-  <input id="orderInput" type="text" placeholder="Masukkan nomor order">
-  <button onclick="trackOrder()">Track</button>
+  <input type="text" id="orderNumber" placeholder="Masukkan nomor order">
+  <button id="trackBtn">Track</button>
 
-  <pre id="result"></pre>
-
-  <script>
-    async function trackOrder() {
-      const orderName = document.getElementById("orderInput").value;
-
-      if (!orderName) {
-        document.getElementById("result").innerText = "⚠️ Masukkan nomor order!";
-        return;
-      }
-
-      const res = await fetch(`/api/getOrder?orderName=${orderName}`);
-      const data = await res.json();
-
-      document.getElementById("result").innerText = JSON.stringify(data, null, 2);
-    }
-  </script>
+  <div id="result"></div>
 </body>
 </html>
