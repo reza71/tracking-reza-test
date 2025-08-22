@@ -51,6 +51,11 @@
             background-color: #2980b9;
         }
         
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
         #result {
             margin-top: 20px;
             padding: 15px;
@@ -90,6 +95,33 @@
         .success {
             background-color: #a3e4d7;
             color: #27ae60;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background-color: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -133,6 +165,17 @@
                     return;
                 }
                 
+                // Tampilkan loading
+                resultDiv.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Mencari data order...</p>
+                    </div>
+                `;
+                
+                // Nonaktifkan tombol sementara
+                trackBtn.disabled = true;
+                
                 try {
                     // Mengambil data order dari Shopify Admin API
                     const response = await fetch('/api/track-order', {
@@ -143,31 +186,31 @@
                         body: JSON.stringify({ orderNumber })
                     });
                     
+                    const data = await response.json();
+                    
                     if (!response.ok) {
-                        throw new Error('Gagal mengambil data order');
+                        throw new Error(data.error || 'Gagal mengambil data order');
                     }
                     
-                    const orderData = await response.json();
-                    
-                    if (orderData.error) {
-                        resultDiv.innerHTML = `<p class="error">${orderData.error}</p>`;
+                    if (data.error) {
+                        resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
                         return;
                     }
                     
                     // Menampilkan informasi order
                     let html = `
                         <div class="order-info">
-                            <h3>Informasi Pesanan #${orderData.orderNumber}</h3>
-                            <p><strong>Nama:</strong> ${orderData.customerName}</p>
-                            <p><strong>Status:</strong> <span class="status ${orderData.status === 'SUCCESS' ? 'success' : 'processing'}">${orderData.status === 'SUCCESS' ? 'Terkirim' : 'Dalam Proses'}</span></p>
+                            <h3>Informasi Pesanan #${data.orderNumber}</h3>
+                            <p><strong>Nama:</strong> ${data.customerName}</p>
+                            <p><strong>Status:</strong> <span class="status ${data.status === 'SUCCESS' || data.status === 'FULFILLED' ? 'success' : 'processing'}">${data.status === 'SUCCESS' || data.status === 'FULFILLED' ? 'Terkirim' : 'Dalam Proses'}</span></p>
                     `;
                     
                     // Jika sudah dikirim, tampilkan informasi resi
-                    if (orderData.status === 'SUCCESS' && orderData.trackingInfo && orderData.trackingInfo.length > 0) {
-                        const tracking = orderData.trackingInfo[0];
+                    if ((data.status === 'SUCCESS' || data.status === 'FULFILLED') && data.trackingInfo && data.trackingInfo.length > 0) {
+                        const tracking = data.trackingInfo[0];
                         html += `
                             <p><strong>Perusahaan Pengiriman:</strong> ${tracking.company}</p>
-                            <p><strong>Nomor Resi:</strong> ${tracking.number}</p>
+                            <p><strong>Nomori Resi:</strong> ${tracking.number}</p>
                         `;
                         
                         // Simpan nomor resi untuk digunakan nanti
@@ -176,6 +219,9 @@
                         // Tampilkan form untuk melacak resi
                         trackingForm.classList.remove('hidden');
                         resiInput.value = tracking.number;
+                    } else {
+                        // Sembunyikan form tracking jika tidak ada resi
+                        trackingForm.classList.add('hidden');
                     }
                     
                     html += `</div>`;
@@ -183,7 +229,10 @@
                     
                 } catch (error) {
                     console.error('Error:', error);
-                    resultDiv.innerHTML = `<p class="error">Gagal mengambil data order. Pastikan nomor order benar.</p>`;
+                    resultDiv.innerHTML = `<div class="error">${error.message || 'Gagal mengambil data order. Pastikan nomor order benar.'}</div>`;
+                } finally {
+                    // Aktifkan kembali tombol
+                    trackBtn.disabled = false;
                 }
             });
             
@@ -213,6 +262,13 @@
                 // Redirect ke halaman tracking JNE
                 let jneUrl = `https://cekresi.jne.co.id/${resi}?verify=${phone}`;
                 window.open(jneUrl, '_blank');
+            });
+            
+            // Enter key support
+            orderInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    trackBtn.click();
+                }
             });
         });
     </script>
