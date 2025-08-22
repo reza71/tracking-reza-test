@@ -21,53 +21,26 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // GraphQL query yang diperbaiki - sesuai dengan schema Shopify API
-    const query = `
-      query GetOrder($query: String!) {
-        orders(first: 1, query: $query) {
-          edges {
-            node {
-              id
-              name
-              displayFulfillmentStatus
-              customer {
-                displayName
-              }
-              fulfillments(first: 10) {
-                nodes {
-                  id
-                  status
-                  trackingInfo {
-                    company
-                    number
-                  }
-                }
-              }
-            }
-          }
+    // Bersihkan nomor order (hilangkan # jika ada)
+    const cleanOrderNumber = orderNumber.replace('#', '');
+
+    // Gunakan REST API untuk mendapatkan order berdasarkan nama/nomor
+    const response = await fetch(
+      `https://${shopifyDomain}/admin/api/${apiVersion}/orders.json?name=${cleanOrderNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': adminApiKey,
+          'Content-Type': 'application/json'
         }
       }
-    `;
-
-    const variables = {
-      query: `name:${orderNumber}`
-    };
-
-    // Request ke Shopify Admin API
-    const response = await fetch(`https://${shopifyDomain}/admin/api/${apiVersion}/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': adminApiKey
-      },
-      body: JSON.stringify({ query, variables })
-    });
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Shopify API error:', response.status, errorText);
       return res.status(response.status).json({ 
-        error: `Error from Shopify API: ${response.status}` 
+        error: `Error dari Shopify API: ${response.status}` 
       });
     }
 
@@ -76,36 +49,42 @@ export default async function handler(req, res) {
     // Debug: Log respons untuk memeriksa struktur
     console.log('Shopify API response:', JSON.stringify(data, null, 2));
 
-    // Cek jika ada error dari GraphQL
-    if (data.errors) {
-      console.error('GraphQL errors:', data.errors);
-      return res.status(400).json({ error: 'Query error: ' + data.errors[0].message });
-    }
-
     // Cek jika order tidak ditemukan
-    if (!data.data || !data.data.orders || !data.data.orders.edges.length) {
+    if (!data.orders || data.orders.length === 0) {
       return res.status(404).json({ error: 'Order tidak ditemukan' });
     }
 
-    const order = data.data.orders.edges[0].node;
+    const order = data.orders[0];
     
     // Ekstrak informasi yang diperlukan
     const result = {
       orderNumber: order.name,
-      customerName: order.customer ? order.customer.displayName : 'Tidak tersedia',
-      status: order.displayFulfillmentStatus,
+      customerName: order.customer ? 
+        `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : 
+        'Tidak tersedia',
+      status: order.fulfillment_status || 'unknown',
       trackingInfo: []
     };
 
-    // Ambil informasi tracking dari fulfillments (menggunakan nodes bukan edges)
-    if (order.fulfillments && order.fulfillments.nodes.length > 0) {
-      order.fulfillments.nodes.forEach(fulfillment => {
-        if (fulfillment.trackingInfo && fulfillment.trackingInfo.length > 0) {
-          fulfillment.trackingInfo.forEach(tracking => {
-            result.trackingInfo.push({
-              company: tracking.company,
-              number: tracking.number
-            });
+    // Ambil informasi tracking dari fulfillments
+    if (order.fulfillments && order.fulfillments.length > 0) {
+      order.fulfillments.forEach(fulfillment => {
+        if (fulfillment.tracking_number) {
+          result.trackingInfo.push({
+            company: fulfillment.tracking_company || 'Other',
+            number: fulfillment.tracking_number
+          });
+        }
+      });
+    }
+
+    // Jika tidak ada fulfillment, cek di line items
+    if (result.trackingInfo.length === 0 && order.line_items) {
+      order.line_items.forEach(item => {
+        if (item.fulfillment_status === 'fulfilled' && item.fulfillment_service) {
+          result.trackingInfo.push({
+            company: item.fulfillment_service,
+            number: 'Tidak tersedia'
           });
         }
       });
