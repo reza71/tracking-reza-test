@@ -1,3 +1,4 @@
+// api/track-order.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -15,7 +16,13 @@ export default async function handler(req, res) {
     const adminApiKey = process.env.SHOPIFY_ADMIN_API_KEY;
     const apiVersion = process.env.SHOPIFY_API_VERSION;
 
+    if (!shopifyDomain || !adminApiKey || !apiVersion) {
+      console.error('Missing environment variables');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     // GraphQL query untuk mendapatkan data order
+    // Diperbaiki untuk mencocokkan struktur yang sesuai dengan respons Postman
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -60,13 +67,20 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      throw new Error(`Shopify API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Shopify API error:', response.status, errorText);
+      return res.status(response.status).json({ 
+        error: `Error from Shopify API: ${response.status}` 
+      });
     }
 
     const data = await response.json();
 
+    // Debug: Log respons untuk memeriksa struktur
+    console.log('Shopify API response:', JSON.stringify(data, null, 2));
+
     // Cek jika order tidak ditemukan
-    if (!data.data.orders.edges.length) {
+    if (!data.data || !data.data.orders || !data.data.orders.edges.length) {
       return res.status(404).json({ error: 'Order tidak ditemukan' });
     }
 
