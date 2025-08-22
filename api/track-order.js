@@ -24,33 +24,31 @@ export default async function handler(req, res) {
     // Bersihkan nomor order (hilangkan # jika ada)
     const cleanOrderNumber = orderNumber.replace('#', '');
 
-    // GraphQL query yang benar sesuai dokumentasi Shopify
-    // Query ini lebih sederhana dan hanya mengambil field yang benar-benar ada
+    // Gunakan query yang sama dengan yang bekerja di Postman
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
           edges {
             node {
+              id
               name
+              createdAt
               displayFulfillmentStatus
               customer {
                 displayName
               }
               fulfillments(first: 5) {
-                fulfillmentLineItems(first: 5) {
-                  edges {
-                    node {
-                      lineItem {
-                        name
-                      }
-                    }
-                  }
-                }
                 trackingInfo {
                   company
                   number
                 }
                 status
+              }
+              totalPriceSet {
+                shopMoney {
+                  amount
+                  currencyCode
+                }
               }
             }
           }
@@ -88,8 +86,7 @@ export default async function handler(req, res) {
     // Cek jika ada error dari GraphQL
     if (data.errors) {
       console.error('GraphQL errors:', data.errors);
-      // Coba query yang lebih sederhana jika query pertama error
-      return await trySimpleQuery(shopifyDomain, adminApiKey, apiVersion, cleanOrderNumber, res);
+      return res.status(400).json({ error: 'Query error: ' + data.errors[0].message });
     }
 
     // Cek jika order tidak ditemukan
@@ -103,8 +100,11 @@ export default async function handler(req, res) {
     const result = {
       orderNumber: order.name,
       customerName: order.customer ? order.customer.displayName : 'Tidak tersedia',
-      status: order.displayFulfillmentStatus,
-      trackingInfo: []
+      status: order.displayFulfillmentStatus || 'UNKNOWN',
+      trackingInfo: [],
+      orderDate: order.createdAt,
+      totalAmount: order.totalPriceSet?.shopMoney?.amount || '0',
+      currency: order.totalPriceSet?.shopMoney?.currencyCode || 'USD'
     };
 
     // Ambil informasi tracking dari fulfillments
@@ -125,71 +125,5 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error fetching order:', error);
     res.status(500).json({ error: 'Terjadi kesalahan saat mengambil data order' });
-  }
-}
-
-// Fungsi untuk mencoba query yang lebih sederhana jika query pertama gagal
-async function trySimpleQuery(shopifyDomain, adminApiKey, apiVersion, orderNumber, res) {
-  try {
-    console.log('Trying simple query...');
-    
-    const simpleQuery = `
-      query GetOrder($query: String!) {
-        orders(first: 1, query: $query) {
-          edges {
-            node {
-              name
-              displayFulfillmentStatus
-              customer {
-                displayName
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const variables = {
-      query: `name:${orderNumber}`
-    };
-
-    const response = await fetch(`https://${shopifyDomain}/admin/api/${apiVersion}/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': adminApiKey
-      },
-      body: JSON.stringify({ query: simpleQuery, variables })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Simple query failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.errors) {
-      throw new Error(`Simple query also failed: ${data.errors[0].message}`);
-    }
-
-    // Cek jika order tidak ditemukan
-    if (!data.data || !data.data.orders || !data.data.orders.edges.length) {
-      return res.status(404).json({ error: 'Order tidak ditemukan' });
-    }
-
-    const order = data.data.orders.edges[0].node;
-    
-    // Untuk query sederhana, kita hanya bisa mendapatkan info dasar
-    const result = {
-      orderNumber: order.name,
-      customerName: order.customer ? order.customer.displayName : 'Tidak tersedia',
-      status: order.displayFulfillmentStatus,
-      trackingInfo: []
-    };
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error('Simple query also failed:', error);
-    res.status(500).json({ error: 'Tidak dapat mengambil data order. Silakan coba lagi nanti.' });
   }
 }
