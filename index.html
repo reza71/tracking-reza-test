@@ -137,6 +137,16 @@
             border-radius: 4px;
             font-size: 14px;
         }
+        
+        .jne-badge {
+            background-color: #e74c3c;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -150,9 +160,9 @@
         <div id="result"></div>
         
         <div id="trackingForm" class="tracking-form hidden">
-            <h2>Lacak Nomor Resi</h2>
+            <h2>Lacak Nomor Resi <span class="jne-badge">JNE</span></h2>
             <p>Masukkan nomor resi dan 5 digit terakhir nomor HP yang digunakan saat order:</p>
-            <input type="text" id="resi" placeholder="Nomor resi">
+            <input type="text" id="resi" placeholder="Nomor resi JNE">
             <input type="text" id="phone" placeholder="5 digit terakhir nomor HP" maxlength="5">
             <button id="cekResiBtn">Lacak Resi di JNE</button>
         </div>
@@ -280,7 +290,7 @@
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
-                                <p><strong>Perusahaan Pengiriman ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.company}</p>
+                                <p><strong>Perusahaan Pengiriman ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.company} <span class="jne-badge">JNE</span></p>
                                 <p><strong>Nomor Resi ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.number}</p>
                             `;
                             
