@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     // Bersihkan nomor order (hilangkan # jika ada)
     const cleanOrderNumber = orderNumber.replace('#', '');
 
-    // Gunakan query yang sama dengan yang bekerja di Postman
+    // Query GraphQL tanpa field customer (karena tidak ada akses)
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -34,9 +34,6 @@ export default async function handler(req, res) {
               name
               createdAt
               displayFulfillmentStatus
-              customer {
-                displayName
-              }
               fulfillments(first: 5) {
                 trackingInfo {
                   company
@@ -86,7 +83,18 @@ export default async function handler(req, res) {
     // Cek jika ada error dari GraphQL
     if (data.errors) {
       console.error('GraphQL errors:', data.errors);
-      return res.status(400).json({ error: 'Query error: ' + data.errors[0].message });
+      
+      // Filter out ACCESS_DENIED errors untuk customer field
+      const nonAccessErrors = data.errors.filter(error => 
+        !error.message.includes('Customer object')
+      );
+      
+      if (nonAccessErrors.length > 0) {
+        return res.status(400).json({ error: 'Query error: ' + nonAccessErrors[0].message });
+      }
+      
+      // Jika hanya error akses customer, kita masih bisa proses data ordernya
+      console.log('Ignoring customer access errors, proceeding with order data');
     }
 
     // Cek jika order tidak ditemukan
@@ -99,7 +107,7 @@ export default async function handler(req, res) {
     // Ekstrak informasi yang diperlukan
     const result = {
       orderNumber: order.name,
-      customerName: order.customer ? order.customer.displayName : 'Tidak tersedia',
+      customerName: 'Informasi pelanggan tidak tersedia', // Default value
       status: order.displayFulfillmentStatus || 'UNKNOWN',
       trackingInfo: [],
       orderDate: order.createdAt,
