@@ -297,7 +297,7 @@
                 // Menampilkan informasi order
                 let html = `
                     <div class="order-info">
-                        <h3>Order Information #${data.orderNumber}</h3>
+                        <h3>Order Information ${data.orderNumber}</h3>
                         <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
                         <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
                         <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
