@@ -131,223 +131,269 @@
     </style>
 </head>
 <body>
-<div style="text-align: center;">
-<a href="https://makethemjealous.co.id">
-  <img src="https://makethemjealous.co.id/cdn/shop/files/CleanShot_2024-12-26_at_11.09.57_2x-removebg-preview.png?v=1735558038&width=195" 
-       alt="Track Orders" 
-       class="tracking-logo" 
-       style="max-width: 200px; height: auto;">
-</a>
+<div style="text-align: center; margin-bottom: 30px;">
+    <a href="https://makethemjealous.co.id">
+        <img src="https://makethemjealous.co.id/cdn/shop/files/CleanShot_2024-12-26_at_11.09.57_2x-removebg-preview.png?v=1735558038&width=195" 
+             alt="Make Them Jealous" 
+             class="tracking-logo" 
+             style="max-width: 200px; height: auto;">
+    </a>
 </div>
-    <div class="card">
-        <h2>Check Order Status</h2>
-        <input type="text" id="orderNumber" placeholder="Enter the order number ..." value="">
-        <button id="trackBtn">Track Orders</button>
-        
-        <div id="result"></div>
-        
-        <div id="trackingForm" class="tracking-form hidden">
-            <h2>Track Resi Number <span class="jne-badge">JNE</span></h2>
-            <p>Enter the Resi number and the last 5 digits of the cellphone number used when ordering:</p>
-            <input type="text" id="resi" placeholder="Resi Number">
-            <input type="text" id="phone" placeholder="Last 5 digits of mobile number" maxlength="5">
-            <button id="cekResiBtn">Track your Resi</button>
-        </div>
-    </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const orderInput = document.getElementById('orderNumber');
-            const trackBtn = document.getElementById('trackBtn');
-            const resultDiv = document.getElementById('result');
-            const trackingForm = document.getElementById('trackingForm');
-            const resiInput = document.getElementById('resi');
-            const phoneInput = document.getElementById('phone');
-            const cekResiBtn = document.getElementById('cekResiBtn');
+<div class="card">
+    <h2>Check Order Status</h2>
+    
+    <!-- Notice for auto-tracking -->
+    <div id="autoTrackNotice" class="auto-track-notice">
+        <p>🔍 <strong>Auto-tracking order...</strong></p>
+    </div>
+    
+    <input type="text" id="orderNumber" placeholder="Enter the order number (e.g., 1321)" value="">
+    <input type="text" id="customerEmail" placeholder="Email or phone number" value="">
+    <button id="trackBtn">Track Orders</button>
+    
+    <div id="result"></div>
+    
+    <div id="trackingForm" class="tracking-form hidden">
+        <h2>Track Resi Number <span class="jne-badge">JNE</span></h2>
+        <p>Enter the Resi number and the last 5 digits of the cellphone number used when ordering:</p>
+        <input type="text" id="resi" placeholder="Resi Number">
+        <input type="text" id="phone" placeholder="Last 5 digits of mobile number" maxlength="5">
+        <button id="cekResiBtn">Track your Resi</button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const orderInput = document.getElementById('orderNumber');
+        const emailInput = document.getElementById('customerEmail');
+        const trackBtn = document.getElementById('trackBtn');
+        const resultDiv = document.getElementById('result');
+        const trackingForm = document.getElementById('trackingForm');
+        const resiInput = document.getElementById('resi');
+        const phoneInput = document.getElementById('phone');
+        const cekResiBtn = document.getElementById('cekResiBtn');
+        const autoTrackNotice = document.getElementById('autoTrackNotice');
+        
+        let currentResi = '';
+        
+        // Parse URL parameters untuk auto-fill
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderParam = urlParams.get('order');
+        const emailParam = urlParams.get('email');
+        
+        // Auto-fill jika ada parameter URL
+        if (orderParam) {
+            orderInput.value = orderParam;
+        }
+        if (emailParam) {
+            emailInput.value = emailParam;
+        }
+        
+        // Auto-track jika kedua parameter ada
+        if (orderParam && emailParam) {
+            autoTrackNotice.style.display = 'block';
+            setTimeout(() => {
+                trackOrder();
+            }, 1000);
+        }
+        
+        // Fungsi untuk mendapatkan class status berdasarkan status order
+        function getStatusClass(status) {
+            status = status || 'UNKNOWN';
+            if (status === 'FULFILLED' || status === 'fulfilled') return 'fulfilled';
+            if (status === 'IN_PROGRESS' || status === 'partial') return 'processing';
+            return 'unknown';
+        }
+        
+        // Fungsi untuk mendapatkan teks status yang lebih user-friendly
+        function getStatusText(status) {
+            status = status || 'UNKNOWN';
+            const statusMap = {
+                'FULFILLED': 'Order shipped',
+                'fulfilled': 'Order shipped',
+                'IN_PROGRESS': 'Still preparing',
+                'partial': 'Partially Shipped',
+                'UNFULFILLED': 'Still preparing',
+                'UNKNOWN': 'Unknown',
+                'null': 'Unprocessed'
+            };
+            return statusMap[status] || status;
+        }
+        
+        // Format tanggal
+        function formatDate(dateString) {
+            if (!dateString) return 'Not available';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+        
+        // Format currency
+        function formatCurrency(amount, currency) {
+            if (!amount) return 'Not available';
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: currency || 'IDR'
+            }).format(amount);
+        }
+        
+        // Fungsi untuk melacak order
+        async function trackOrder() {
+            const orderNumber = orderInput.value.trim();
+            const customerEmail = emailInput.value.trim();
             
-            let currentResi = '';
-            
-            // Fungsi untuk mendapatkan class status berdasarkan status order
-            function getStatusClass(status) {
-                status = status || 'UNKNOWN';
-                if (status === 'FULFILLED' || status === 'fulfilled') return 'fulfilled';
-                if (status === 'IN_PROGRESS' || status === 'partial') return 'processing';
-                return 'unknown';
+            if (!orderNumber) {
+                alert('Enter the order number first');
+                return;
             }
             
-            // Fungsi untuk mendapatkan teks status yang lebih user-friendly
-            function getStatusText(status) {
-                status = status || 'UNKNOWN';
-                const statusMap = {
-                    'FULFILLED': 'Order shipped',
-                    'fulfilled': 'Order shipped',
-                    'IN_PROGRESS': 'Still preparing',
-                    'partial': 'Partially Shipped',
-                    'UNFULFILLED': 'Still preparing',
-                    'UNKNOWN': 'Unknown',
-                    'null': 'Unprocessed'
-                };
-                return statusMap[status] || status;
+            if (!customerEmail) {
+                alert('Please enter your email or phone number');
+                return;
             }
             
-            // Format tanggal
-            function formatDate(dateString) {
-                if (!dateString) return 'Not available';
-                const date = new Date(dateString);
-                return date.toLocaleDateString('id-ID', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-            }
+            // Tampilkan loading
+            resultDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Search for order data...</p>
+                </div>
+            `;
             
-            // Format currency
-            function formatCurrency(amount, currency) {
-                if (!amount) return 'Not available';
-                return new Intl.NumberFormat('id-ID', {
-                    style: 'currency',
-                    currency: currency || 'IDR'
-                }).format(amount);
-            }
+            // Nonaktifkan tombol sementara
+            trackBtn.disabled = true;
             
-            // Fungsi untuk melacak order
-            trackBtn.addEventListener('click', async function() {
-                const orderNumber = orderInput.value.trim();
+            try {
+                // Menggunakan domain Vercel yang benar
+                const API_URL = 'https://mtj-tracking-orders.vercel.app/api/track-order';
                 
-                if (!orderNumber) {
-                    alert('Enter the order number first');
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        orderNumber: orderNumber,
+                        customerEmail: customerEmail 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
                     return;
                 }
                 
-                // Tampilkan loading
-                resultDiv.innerHTML = `
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p>Search for order data...</p>
-                    </div>
+                // Menampilkan informasi order
+                let html = `
+                    <div class="order-info">
+                        <h3>Order Information #${data.orderNumber}</h3>
+                        <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
+                        <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
+                        <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
                 `;
                 
-                // Nonaktifkan tombol sementara
-                trackBtn.disabled = true;
-                
-                try {
-                    // Mengambil data order dari Shopify Admin API
-                    const response = await fetch('/api/track-order', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ orderNumber })
+                // Jika sudah dikirim, tampilkan informasi resi
+                if (data.trackingInfo && data.trackingInfo.length > 0) {
+                    data.trackingInfo.forEach((tracking, index) => {
+                        html += `
+                            <p><strong>Parcel service:</strong> ${tracking.company} <span class="jne-badge">JNE</span></p>
+                            <p><strong>Airwaybill Number:</strong> ${tracking.number}</p>
+                        `;
+                        
+                        // Simpan nomor resi pertama untuk digunakan nanti
+                        if (index === 0) {
+                            currentResi = tracking.number;
+                        }
                     });
                     
-                    const data = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-                    }
-                    
-                    if (data.error) {
-                        resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
-                        return;
-                    }
-                    
-                    // Menampilkan informasi order
-                    let html = `
-                        <div class="order-info">
-                            <h3>Order Information ${data.orderNumber}</h3>
-                            <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
-                            <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
-                            <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
-                    `;
-                    
-                    // Tambahkan info customer jika tersedia
-                   //  if (data.customerName && data.customerName !== 'Customer information is not available') {
-                   //      html += `<p><strong>Customer Name:</strong> ${data.customerName}</p>`;
-                  //   } else {
-                   //      html += `
-                   //          <div class="info-note">
-                   //              <p>Customer information is not available due to Shopify access restrictions.</p>
-                  //               <p>To track your airwaybill, use the last 5 digits of your mobile number used when ordering.</p>
-                   //          </div>
-                  //       `;
-                 //    }
-                    
-                    // Jika sudah dikirim, tampilkan informasi resi
-                    if (data.trackingInfo && data.trackingInfo.length > 0) {
-                        data.trackingInfo.forEach((tracking, index) => {
-                            html += `
-                                <p>Parcel service ${data.trackingInfo.length > 1 ? index + 1 : ''}:<span class="jne-badge">JNE</span></p>
-                                <p>Airwaybill Number ${data.trackingInfo.length > 1 ? index + 1 : ''}: ${tracking.number}</p>
-                            `;
-                            
-                            // Simpan nomor resi pertama untuk digunakan nanti
-                            if (index === 0) {
-                                currentResi = tracking.number;
-                            }
-                        });
-                        
-                        // Tampilkan form untuk melacak resi
-                        trackingForm.classList.remove('hidden');
-                        resiInput.value = currentResi;
-                    } else {
-                        // Sembunyikan form tracking jika tidak ada resi
-                        trackingForm.classList.add('hidden');
-                        html += `<p>There is no shipping information for this order yet.</p>`;
-                    }
-                    
-                    html += `</div>`;
-                    resultDiv.innerHTML = html;
-                    
-                } catch (error) {
-                    console.error('Error:', error);
-                    resultDiv.innerHTML = `
-                        <div class="error">
-                            <p>${error.message || 'Failed to retrieve order data. Please ensure the order number is correct.'}</p>
-                            <p>Please try again or contact the hello@makethemjealous.co.id.</p>
+                    // Tampilkan form untuk melacak resi
+                    trackingForm.classList.remove('hidden');
+                    resiInput.value = currentResi;
+                } else {
+                    // Sembunyikan form tracking jika tidak ada resi
+                    trackingForm.classList.add('hidden');
+                    html += `
+                        <div class="info-note">
+                            <p>There is no shipping information for this order yet.</p>
+                            <p>Your order is being processed. You will receive an email notification once it's shipped.</p>
                         </div>
                     `;
-                } finally {
-                    // Aktifkan kembali tombol
-                    trackBtn.disabled = false;
                 }
-            });
+                
+                // Support information
+                html += `
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+                        <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
+                    </div>
+                </div>`;
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <p>${error.message || 'Failed to retrieve order data. Please ensure the order number is correct.'}</p>
+                        <p>Please try again or contact hello@makethemjealous.co.id.</p>
+                    </div>
+                `;
+            } finally {
+                // Aktifkan kembali tombol
+                trackBtn.disabled = false;
+                autoTrackNotice.style.display = 'none';
+            }
+        }
+        
+        // Event listener untuk track button
+        trackBtn.addEventListener('click', trackOrder);
+        
+        // Fungsi untuk melacak resi di JNE
+        cekResiBtn.addEventListener('click', function() {
+            let resi = resiInput.value.trim();
+            let phone = phoneInput.value.trim();
             
-            // Fungsi untuk melacak resi di JNE
-            cekResiBtn.addEventListener('click', function() {
-                let resi = resiInput.value.trim();
-                let phone = phoneInput.value.trim();
-                
-                if (resi === "" || phone === "") {
-                    alert("Enter the last 5 digits of your mobile number correctly.");
-                    return;
-                }
-                
-                // Jika user mengubah nomor resi, gunakan yang diinput
-                // Jika tidak, gunakan nomor resi dari order
-                if (!resi && currentResi) {
-                    resi = currentResi;
-                    resiInput.value = resi;
-                }
-                
-                // Validasi 5 digit terakhir nomor HP
-                if (phone.length !== 5 || isNaN(phone)) {
-                    alert("Enter the last 5 digits of your mobile number correctly.");
-                    return;
-                }
-                
-                // Redirect ke halaman tracking JNE
-                let jneUrl = `https://cekresi.jne.co.id/${resi}?verify=${phone}`;
-                window.open(jneUrl, '_blank');
-            });
+            if (resi === "" || phone === "") {
+                alert("Enter the Resi number and last 5 digits of your mobile number.");
+                return;
+            }
             
-            // Enter key support
-            orderInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    trackBtn.click();
-                }
-            });
+            // Jika user mengubah nomor resi, gunakan yang diinput
+            if (!resi && currentResi) {
+                resi = currentResi;
+                resiInput.value = resi;
+            }
+            
+            // Validasi 5 digit terakhir nomor HP
+            if (phone.length !== 5 || isNaN(phone)) {
+                alert("Please enter the last 5 digits of your mobile number correctly.");
+                return;
+            }
+            
+            // Redirect ke halaman tracking JNE
+            let jneUrl = `https://cekresi.jne.co.id/${resi}?verify=${phone}`;
+            window.open(jneUrl, '_blank');
         });
-    </script>
+        
+        // Enter key support
+        orderInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') trackOrder();
+        });
+        
+        emailInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') trackOrder();
+        });
+    });
+</script>
 </body>
 </html>
