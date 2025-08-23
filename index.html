@@ -179,11 +179,11 @@
             function getStatusText(status) {
                 status = status || 'UNKNOWN';
                 const statusMap = {
-                    'FULFILLED': 'Been Sent',
-                    'fulfilled': 'Been Sent',
-                    'IN_PROGRESS': 'Being processed',
-                    'partial': 'Partially Sent',
-                    'UNFULFILLED': 'Being processed',
+                    'FULFILLED': 'Order shipped',
+                    'fulfilled': 'Order shipped',
+                    'IN_PROGRESS': 'Still preparing',
+                    'partial': 'Partially Shipped',
+                    'UNFULFILLED': 'Still preparing',
                     'UNKNOWN': 'Unknown',
                     'null': 'Unprocessed'
                 };
