@@ -293,8 +293,8 @@
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
-                                <p><strong>Perusahaan Pengiriman ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.company} <span class="jne-badge">JNE</span></p>
-                                <p><strong>Nomor Resi ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.number}</p>
+                                <p><strong>Parcel service ${data.trackingInfo.length > 1 ? index + 1 : ''}:<span class="jne-badge">JNE</span></p>
+                                <p><strong>AirWaybill Number ${data.trackingInfo.length > 1 ? index + 1 : ''}:</strong> ${tracking.number}</p>
                             `;
                             
                             // Simpan nomor resi pertama untuk digunakan nanti
