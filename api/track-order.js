@@ -1,29 +1,30 @@
 // api/track-order.js
 export default async function handler(req, res) {
-  // Set CORS headers untuk allow requests dari Shopify store
+  // Handle CORS untuk Shopify
   res.setHeader('Access-Control-Allow-Origin', 'https://49r1z3-hn.myshopify.com');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  // Handle preflight request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-  
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-
   try {
-    // Konfigurasi dari environment variables
-    const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
-    const adminApiKey = process.env.SHOPIFY_ADMIN_API_KEY;
-    const apiVersion = process.env.SHOPIFY_API_VERSION;
-
-    if (!shopifyDomain || !adminApiKey || !apiVersion) {
-      console.error('Missing environment variables');
-      return res.status(500).json({ error: 'Server configuration error' });
+    // Parse data dari Shopify proxy
+    let orderNumber;
+    
+    if (req.headers['content-type'] === 'application/x-www-form-urlencoded') {
+      // Data dari form submission
+      const body = await parseFormData(req);
+      orderNumber = body.orderNumber;
+    } else {
+      // Data JSON langsung
+      const body = await req.json();
+      orderNumber = body.orderNumber;
     }
 
     // Bersihkan nomor order (hilangkan # jika ada)
@@ -140,4 +141,28 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'Terjadi kesalahan saat mengambil data order' });
   }
 }
+
+
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Terjadi kesalahan' });
+  }
+}
+
+// Helper function untuk parse form data
+async function parseFormData(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      const params = new URLSearchParams(body);
+      resolve(Object.fromEntries(params));
+    });
+    req.on('error', reject);
+  });
+}
+
 
