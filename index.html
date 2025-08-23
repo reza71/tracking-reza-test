@@ -352,7 +352,7 @@
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
-                                <p><strong>Shipping Service:</strong> ${tracking.company} <span class="badge jne-badge">JNE</span></p>
+                                <p><strong>Shipping Service:</strong> ${tracking.company}
                                 <p><strong>AWB Number:</strong> ${tracking.number}</p>
                                 <p><strong>Shipping Date:</strong> ${formatDate(data.fulfillmentDate)}</p>
                             `;
