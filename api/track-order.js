@@ -98,7 +98,7 @@ export default async function handler(req, res) {
 
     // Cek jika order tidak ditemukan
     if (!data.data || !data.data.orders || !data.data.orders.edges.length) {
-      return res.status(404).json({ error: 'Order tidak ditemukan' });
+      return res.status(404).json({ error: 'Order not found' });
     }
 
     const order = data.data.orders.edges[0].node;
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
     // Ekstrak informasi yang diperlukan
     const result = {
       orderNumber: order.name,
-      customerName: 'Informasi pelanggan tidak tersedia', // Default value
+      customerName: 'Customer information is not available', // Default value
       status: order.displayFulfillmentStatus || 'UNKNOWN',
       trackingInfo: [],
       orderDate: order.createdAt,
@@ -131,9 +131,10 @@ export default async function handler(req, res) {
     res.status(200).json(result);
   } catch (error) {
     console.error('Error fetching order:', error);
-    res.status(500).json({ error: 'Terjadi kesalahan saat mengambil data order' });
+    res.status(500).json({ error: 'An error occurred while retrieving order data' });
   }
 }
+
 
 
 
