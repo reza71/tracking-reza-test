@@ -1,14 +1,19 @@
 // api/track-order.js
 export default async function handler(req, res) {
+  // Set CORS headers untuk allow requests dari Shopify store
+  res.setHeader('Access-Control-Allow-Origin', 'https://49r1z3-hn.myshopify.com');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { orderNumber } = req.body;
-
-  if (!orderNumber) {
-    return res.status(400).json({ error: 'Order number is required' });
-  }
 
   try {
     // Konfigurasi dari environment variables
@@ -135,3 +140,4 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'Terjadi kesalahan saat mengambil data order' });
   }
 }
+
