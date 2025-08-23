@@ -1,15 +1,24 @@
 export default async function handler(req, res) {
+  // Set CORS headers untuk allow requests dari domain Vercel
+  res.setHeader('Access-Control-Allow-Origin', 'https://mtj-tracking-orders.vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { orderNumber } = req.body;
-
-  if (!orderNumber) {
-    return res.status(400).json({ error: 'Order number is required' });
-  }
-
   try {
+    const { orderNumber, customerEmail } = req.body;
+
+    if (!orderNumber) {
+      return res.status(400).json({ error: 'Order number is required' });
+    }
+
     // Konfigurasi dari environment variables
     const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
     const adminApiKey = process.env.SHOPIFY_ADMIN_API_KEY;
@@ -23,7 +32,7 @@ export default async function handler(req, res) {
     // Bersihkan nomor order (hilangkan # jika ada)
     const cleanOrderNumber = orderNumber.replace('#', '');
 
-    // Query GraphQL tanpa field customer (karena tidak ada akses)
+    // Query GraphQL untuk dapatkan data order
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -31,6 +40,7 @@ export default async function handler(req, res) {
             node {
               id
               name
+              email
               createdAt
               displayFulfillmentStatus
               fulfillments(first: 5) {
@@ -70,20 +80,17 @@ export default async function handler(req, res) {
       const errorText = await response.text();
       console.error('Shopify API error:', response.status, errorText);
       return res.status(response.status).json({ 
-        error: `Error dari Shopify API: ${response.status}` 
+        error: `Error from Shopify API: ${response.status}` 
       });
     }
 
     const data = await response.json();
 
-    // Debug: Log respons untuk memeriksa struktur
-    console.log('Shopify API response:', JSON.stringify(data, null, 2));
-
     // Cek jika ada error dari GraphQL
     if (data.errors) {
       console.error('GraphQL errors:', data.errors);
       
-      // Filter out ACCESS_DENIED errors untuk customer field
+      // Filter out ACCESS_DENIED errors
       const nonAccessErrors = data.errors.filter(error => 
         !error.message.includes('Customer object')
       );
@@ -91,9 +98,6 @@ export default async function handler(req, res) {
       if (nonAccessErrors.length > 0) {
         return res.status(400).json({ error: 'Query error: ' + nonAccessErrors[0].message });
       }
-      
-      // Jika hanya error akses customer, kita masih bisa proses data ordernya
-      console.log('Ignoring customer access errors, proceeding with order data');
     }
 
     // Cek jika order tidak ditemukan
@@ -103,10 +107,24 @@ export default async function handler(req, res) {
 
     const order = data.data.orders.edges[0].node;
     
+    // Verifikasi email customer jika provided
+    if (customerEmail && order.email) {
+      const providedEmail = customerEmail.toLowerCase().trim();
+      const orderEmail = order.email.toLowerCase().trim();
+      
+      // Basic email validation - bisa juga validasi nomor telepon di sini
+      if (!providedEmail.includes('@')) {
+        // Mungkin ini nomor telepon, skip validation untuk sekarang
+        console.log('Phone number provided instead of email, skipping email validation');
+      } else if (orderEmail !== providedEmail) {
+        return res.status(403).json({ error: 'Email does not match order records' });
+      }
+    }
+    
     // Ekstrak informasi yang diperlukan
     const result = {
       orderNumber: order.name,
-      customerName: 'Customer information is not available', // Default value
+      customerName: order.email || 'Customer information not available',
       status: order.displayFulfillmentStatus || 'UNKNOWN',
       trackingInfo: [],
       orderDate: order.createdAt,
@@ -120,7 +138,7 @@ export default async function handler(req, res) {
         if (fulfillment.trackingInfo && fulfillment.trackingInfo.length > 0) {
           fulfillment.trackingInfo.forEach(tracking => {
             result.trackingInfo.push({
-              company: tracking.company,
+              company: "JNE", // Always set to JNE
               number: tracking.number
             });
           });
@@ -134,8 +152,3 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'An error occurred while retrieving order data' });
   }
 }
-
-
-
-
-
