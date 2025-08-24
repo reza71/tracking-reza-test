@@ -125,6 +125,8 @@ export default async function handler(req, res) {
     // Ekstrak informasi yang diperlukan
     const result = {
       orderNumber: order.name,
+      status: order.fulfillment_status || order.financial_status,
+    tags: order.tags,
       customerName: order.email || 'Customer information not available',
       status: order.displayFulfillmentStatus || 'UNKNOWN',
       trackingInfo: [],
@@ -164,4 +166,5 @@ if (isDelivered && data.status !== 'DELIVERED') {
     data.status = 'DELIVERED';
     addDebugInfo(`Order marked as delivered based on shipping date or Delivered tag`);
 }
+
 
