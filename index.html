@@ -396,9 +396,9 @@ async function trackOrder() {
         `;
         
         // Show tag information if available
-        if (data.tags) {
-            html += `<p><strong>Tags:</strong> ${data.tags}</p>`;
-        }
+        // if (data.tags) {
+         //    html += `<p><strong>Tags:</strong> ${data.tags}</p>`;
+      //   }
         
         // If shipped, display shipping information
         if (data.trackingInfo && data.trackingInfo.length > 0) {
