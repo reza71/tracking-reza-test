@@ -352,7 +352,63 @@ header {
     font-family: monospace;
     display: none;
 }
- 
+
+/* Timeline CSS */
+.timeline {
+    position: relative;
+    padding-left: 20px;
+    margin-top: 20px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background-color: var(--border);
+}
+
+.timeline-item {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background-color: var(--border);
+    border-radius: 50%;
+    left: 0;
+    top: 0;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+.timeline-item.active::before {
+    background-color: var(--primary);
+}
+
+.timeline-content {
+    background-color: var(--accent);
+    padding: 15px;
+    border-radius: 4px;
+    margin-left: 20px;
+}
+
+.timeline-date {
+    font-size: 0.9rem;
+    color: var(--light-text);
+    margin-bottom: 5px;
+}
+
+.timeline-status {
+    font-weight: 600;
+    color: var(--primary);
+}
 /* Footer */
 footer {
     text-align: center;
@@ -370,8 +426,8 @@ footer {
             <div class="header-content">
                 <a href="https://makethemjealous.co.id">
                     <img src="https://makethemjealous.co.id/cdn/shop/files/CleanShot_2024-12-26_at_11.09.57_2x-removebg-preview.png?v=1735558038&width=195" 
-                        alt="Make Them Jealous" 
-                        class="logo">
+                         alt="Make Them Jealous" 
+                         class="logo">
                 </a>
             </div>
         </div>
@@ -394,23 +450,6 @@ footer {
             </div>
             
             <div id="result" class="hidden">
-                </div>
-
-            <div id="trackingForm" class="tracking-section hidden">
-                <h2>Track AWB Number <span class="badge jne-badge">JNE</span></h2>
-                <p>Enter the AWB number and the last 5 digits of the phone number used when ordering:</p>
-                
-                <div class="form-group">
-                    <label for="resi">AWB Number</label>
-                    <input type="text" id="resi" class="form-control" placeholder="Enter AWB number">
-                </div>
-                
-                <div class="form-group">
-                    <label for="phone">Last 5 Digits of Phone Number</label>
-                    <input type="text" id="phone" class="form-control" placeholder="Last 5 digits" maxlength="5">
-                </div>
-                
-                <button id="cekResiBtn" class="btn">Track AWB</button>
             </div>
         </div>
     </div>
@@ -426,10 +465,6 @@ footer {
             const orderInput = document.getElementById('orderNumber');
             const trackBtn = document.getElementById('trackBtn');
             const resultDiv = document.getElementById('result');
-            const trackingForm = document.getElementById('trackingForm');
-            const resiInput = document.getElementById('resi');
-            const phoneInput = document.getElementById('phone');
-            const cekResiBtn = document.getElementById('cekResiBtn');
             const autoTrackNotice = document.getElementById('autoTrackNotice');
             
             let currentOrderData = null;
@@ -440,7 +475,7 @@ footer {
                 status = status || 'UNKNOWN';
                 if (status === 'DELIVERED') return 'delivered';
                 if (status === 'FULFILLED' || status === 'fulfilled') return 'fulfilled';
-                if (status === 'IN_PROGRESS' || status === 'partial') return 'processing';
+                if (status === 'IN_PROGRESS' || status === 'partial' || status === 'UNFULFILLED') return 'processing';
                 return 'unknown';
             }
             
@@ -511,6 +546,45 @@ footer {
                 
                 return daysSinceFulfillment > 3;
             }
+
+            // Function to build the timeline HTML
+            function buildTimeline(orderData) {
+                const status = orderData.status;
+                const timelineItems = [
+                    { date: orderData.orderDate, text: 'Order placed' },
+                    { date: findFulfillmentDate(orderData), text: 'Order processed and shipped' },
+                    { date: orderData.deliveredDate, text: 'Order delivered successfully' }
+                ];
+
+                let timelineHtml = '<div class="timeline">';
+                
+                // Determine which steps are active
+                let isFulfilled = status === 'FULFILLED' || status === 'fulfilled' || status === 'DELIVERED';
+                let isDelivered = status === 'DELIVERED';
+
+                timelineItems.forEach((item, index) => {
+                    let isActive = false;
+                    if (index === 0) {
+                        isActive = true; // Order placed is always active if order exists
+                    } else if (index === 1 && isFulfilled) {
+                        isActive = true;
+                    } else if (index === 2 && isDelivered) {
+                        isActive = true;
+                    }
+
+                    timelineHtml += `
+                        <div class="timeline-item${isActive ? ' active' : ''}">
+                            <div class="timeline-content">
+                                <div class="timeline-date">${item.date ? formatDate(item.date) : 'Pending'}</div>
+                                <div class="timeline-status">${item.text}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                timelineHtml += '</div>';
+                return timelineHtml;
+            }
             
             // Function to track order
             async function trackOrder() {
@@ -573,21 +647,18 @@ footer {
                     let html = `
                         <div class="order-card">
                             <div class="order-header">
-                                <h2 class="order-number">Order #${data.orderNumber}</h2>
+                                <h2 class="order-number">Order ${data.orderNumber}</h2>
                                 <span class="order-status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span>
                             </div>
-                            <div class="order-details">
-                                <div class="detail-item">
-                                    <p class="detail-label">Order Date</p>
-                                    <p class="detail-value">${formatDate(data.orderDate)}</p>
-                                </div>
-                                <div class="detail-item">
-                                    <p class="detail-label">Total Amount</p>
-                                    <p class="detail-value">${formatCurrency(data.totalAmount, data.currency)}</p>
-                                </div>
                     `;
                     
+                    // Add the timeline section
+                    html += `<div class="order-details">${buildTimeline(data)}</div>`;
+
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
+                         html += `
+                             <h3 style="margin-top: 20px;">Shipping Details</h3>
+                         `;
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
                                 <div class="detail-item">
@@ -605,10 +676,22 @@ footer {
                             }
                         });
                         
-                        trackingForm.classList.remove('hidden');
-                        resiInput.value = currentResi;
+                        html += `
+                             <div class="tracking-section" style="margin-top: 20px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                 <h3>Track AWB Number <span class="badge jne-badge">JNE</span></h3>
+                                 <p>Enter the AWB number and the last 5 digits of the phone number used when ordering:</p>
+                                 <div class="form-group">
+                                     <label for="resi">AWB Number</label>
+                                     <input type="text" id="resi" class="form-control" placeholder="Enter AWB number" value="${currentResi}">
+                                 </div>
+                                 <div class="form-group">
+                                     <label for="phone">Last 5 Digits of Phone Number</label>
+                                     <input type="text" id="phone" class="form-control" placeholder="Last 5 digits" maxlength="5">
+                                 </div>
+                                 <button id="cekResiBtn" class="btn">Track AWB</button>
+                             </div>
+                        `;
                     } else {
-                        trackingForm.classList.add('hidden');
                         html += `
                             <div class="info-note">
                                 <p>No shipping information available for this order yet.</p>
@@ -649,6 +732,11 @@ footer {
                 } finally {
                     trackBtn.disabled = false;
                     autoTrackNotice.classList.add('hidden');
+                    // Add event listener for the new "Track AWB" button
+                    const newCekResiBtn = document.getElementById('cekResiBtn');
+                    if (newCekResiBtn) {
+                        newCekResiBtn.addEventListener('click', trackAwb);
+                    }
                 }
             }
             
@@ -721,23 +809,16 @@ footer {
                     `;
                 }
             };
-            
-            // Event listener for track button
-            trackBtn.addEventListener('click', trackOrder);
-            
-            // Function to track AWB on JNE
-            cekResiBtn.addEventListener('click', function() {
+
+            function trackAwb() {
+                const resiInput = document.getElementById('resi');
+                const phoneInput = document.getElementById('phone');
                 let resi = resiInput.value.trim();
                 let phone = phoneInput.value.trim();
                 
                 if (resi === "" || phone === "") {
                     alert("Please enter the AWB number and last 5 digits of your phone number.");
                     return;
-                }
-                
-                if (!resi && currentResi) {
-                    resi = currentResi;
-                    resiInput.value = resi;
                 }
                 
                 if (phone.length !== 5 || isNaN(phone)) {
@@ -747,7 +828,10 @@ footer {
                 
                 let jneUrl = `https://cekresi.jne.co.id/${resi}?verify=${phone}`;
                 window.open(jneUrl, '_blank');
-            });
+            }
+            
+            // Event listener for track button
+            trackBtn.addEventListener('click', trackOrder);
             
             orderInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') trackOrder();
