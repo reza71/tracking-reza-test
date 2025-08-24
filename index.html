@@ -191,14 +191,10 @@
             // Parse URL parameters for auto-fill
             const urlParams = new URLSearchParams(window.location.search);
             const orderParam = urlParams.get('order');
-            const emailParam = urlParams.get('email');
             
             // Auto-fill if URL parameters exist
             if (orderParam) {
                 orderInput.value = orderParam;
-            }
-            if (emailParam) {
-                emailInput.value = decodeURIComponent(emailParam);
             }
             
             // Auto-track if both parameters exist
@@ -271,7 +267,6 @@
             // Function to track order
             async function trackOrder() {
                 const orderNumber = orderInput.value.trim();
-                const customerEmail = emailInput.value.trim();
                 
                 if (!orderNumber) {
                     alert('Please enter your order number first');
