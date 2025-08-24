@@ -1,3 +1,4 @@
+// pages/api/confirm-delivery.js
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,25 +21,31 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'order_number is required' });
     }
 
-    const shop = process.env.SHOPIFY_STORE_DOMAIN;
-    const token = process.env.SHOPIFY_ADMIN_API_KEY;
+    // Use consistent environment variable names
+    const shop = process.env.SHOPIFY_SHOP || process.env.SHOPIFY_STORE_DOMAIN;
+    const token = process.env.SHOPIFY_ADMIN_API_TOKEN || process.env.SHOPIFY_ADMIN_API_KEY;
     
+    // Check if environment variables are set
     if (!shop || !token) {
       console.error('Missing environment variables');
       return res.status(500).json({ 
-        error: 'Server configuration error: Missing Shopify credentials' 
+        error: 'Server configuration error: Missing Shopify credentials',
+        details: `SHOPIFY_SHOP: ${shop ? 'Set' : 'Missing'}, SHOPIFY_ADMIN_API_TOKEN: ${token ? 'Set' : 'Missing'}`
       });
     }
 
-    // ✅ Normalize order number
-    let cleanOrderNumber = order_number.replace(/#/g, "");
-    cleanOrderNumber = `#${cleanOrderNumber}`;
-
-    // 1. Search for order by name
-    const searchUrl = `https://${shop}/admin/api/2025-07/orders.json?name=${encodeURIComponent(cleanOrderNumber)}`;
-    console.log('Searching for order:', searchUrl);
+    // Use consistent API version
+    const apiVersion = '2024-01';
     
-    const searchRes = await fetch(searchUrl, {
+    // Try searching with both formats (# prefix and without)
+    let searchData;
+    let order = null;
+    
+    // Try with # prefix first
+    let searchUrl = `https://${shop}/admin/api/${apiVersion}/orders.json?name=${encodeURIComponent('#' + order_number)}`;
+    console.log('Searching for order with #:', searchUrl);
+    
+    let searchRes = await fetch(searchUrl, {
       method: 'GET',
       headers: {
         'X-Shopify-Access-Token': token,
@@ -46,21 +53,45 @@ export default async function handler(req, res) {
       },
     });
 
-    if (!searchRes.ok) {
-      console.error('Shopify API error:', searchRes.status, searchRes.statusText);
-      return res.status(searchRes.status).json({ 
-        error: `Failed to search order: ${searchRes.statusText}` 
+    if (searchRes.ok) {
+      searchData = await searchRes.json();
+      if (searchData.orders && searchData.orders.length > 0) {
+        order = searchData.orders[0];
+      }
+    }
+
+    // If not found with #, try without #
+    if (!order) {
+      searchUrl = `https://${shop}/admin/api/${apiVersion}/orders.json?name=${encodeURIComponent(order_number)}`;
+      console.log('Searching for order without #:', searchUrl);
+      
+      searchRes = await fetch(searchUrl, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': token,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (searchRes.ok) {
+        searchData = await searchRes.json();
+        if (searchData.orders && searchData.orders.length > 0) {
+          order = searchData.orders[0];
+        }
+      }
+    }
+
+    // If still not found, return error
+    if (!order) {
+      console.error('Order not found with either format');
+      return res.status(404).json({ 
+        error: 'Order not found',
+        details: `Searched for orders with name: #${order_number} and ${order_number}`
       });
     }
 
-    const searchData = await searchRes.json();
-    
-    if (!searchData.orders || searchData.orders.length === 0) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    const order = searchData.orders[0];
     const orderId = order.id;
+    console.log('Found order:', orderId, order.name);
 
     // 2. Get existing tags
     let tags = order.tags ? order.tags.split(',').map(t => t.trim()) : [];
@@ -71,7 +102,7 @@ export default async function handler(req, res) {
     }
 
     // 4. Update order with new tags
-    const updateUrl = `https://${shop}/admin/api/2025-07/orders/${orderId}.json`;
+    const updateUrl = `https://${shop}/admin/api/${apiVersion}/orders/${orderId}.json`;
     console.log('Updating order:', updateUrl);
     
     const updateRes = await fetch(updateUrl, {
@@ -101,7 +132,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: `Order ${cleanOrderNumber} updated with Delivered tag`,
+      message: `Order ${order.name} updated with Delivered tag`,
       order: updateData.order,
     });
     
