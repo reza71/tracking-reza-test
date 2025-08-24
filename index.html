@@ -381,37 +381,10 @@
             background-color: #e74c3c;
             color: white;
             padding: 3px 8px;
-            border-radius: 4px;
+            borderRadius: 4px;
             font-size: 12px;
             font-weight: bold;
             margin-left: 5px;
-        }
-        
-        .debug-toggle {
-            background: #6a11cb;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            margin: 10px 0;
-            transition: all 0.3s;
-            width: 0%;
-        }
-        
-        .debug-toggle:hover {
-            background: #5a0fb8;
-        }
-        
-        .debug-info {
-            background: #2c3e50;
-            color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-family: monospace;
-            display: none;
         }
         
         /* Responsive Adjustments */
@@ -529,12 +502,28 @@
                 if (data.fulfillmentDate) return data.fulfillmentDate;
                 if (data.fulfilled_at) return data.fulfilled_at;
                 if (data.shippingDate) return data.shippingDate;
+                
+                // Check if we have tracking info with dates
                 if (data.trackingInfo && data.trackingInfo.length > 0) {
                     for (const tracking of data.trackingInfo) {
                         if (tracking.date) return tracking.date;
                         if (tracking.shippingDate) return tracking.shippingDate;
                     }
                 }
+                
+                // Check for events in the order timeline
+                if (data.events && data.events.length > 0) {
+                    for (const event of data.events) {
+                        if (event.includes('fulfilled') || event.includes('shipping confirmation')) {
+                            // Try to extract date from event
+                            const dateMatch = event.match(/(August|September|October|November|December|January|February|March|April|May|June|July) (\d{1,2}),? (\d{4})/);
+                            if (dateMatch) {
+                                return new Date(dateMatch[0]).toISOString();
+                            }
+                        }
+                    }
+                }
+                
                 return null;
             }
             
@@ -542,10 +531,26 @@
             function findDeliveredDate(data) {
                 if (data.deliveredDate) return data.deliveredDate;
                 if (data.delivered_at) return data.delivered_at;
+                
+                // Check if order has delivered tag
                 if (data.tags && data.tags.includes('Delivered')) {
                     // If we have a delivered tag but no specific date, use current date
                     return new Date().toISOString();
                 }
+                
+                // Check for delivery events in the order timeline
+                if (data.events && data.events.length > 0) {
+                    for (const event of data.events) {
+                        if (event.includes('delivered') || event.includes('Delivered')) {
+                            // Try to extract date from event
+                            const dateMatch = event.match(/(August|September|October|November|December|January|February|March|April|May|June|July) (\d{1,2}),? (\d{4})/);
+                            if (dateMatch) {
+                                return new Date(dateMatch[0]).toISOString();
+                            }
+                        }
+                    }
+                }
+                
                 return null;
             }
             
@@ -563,12 +568,13 @@
             // Function to build the timeline HTML
             function buildTimeline(orderData) {
                 const status = orderData.status;
+                const orderDate = orderData.orderDate;
                 const fulfillmentDate = findFulfillmentDate(orderData);
                 const deliveredDate = findDeliveredDate(orderData);
                 
                 const timelineItems = [
                     { 
-                        date: orderData.orderDate, 
+                        date: orderDate, 
                         text: 'Order placed',
                         active: true // Order placed is always active
                     },
@@ -587,10 +593,18 @@
                 let timelineHtml = '<div class="timeline">';
                 
                 timelineItems.forEach((item, index) => {
+                    // For the shipped status, if we don't have a date but status is fulfilled, show current date
+                    let displayDate = item.date ? formatDate(item.date) : 'Pending';
+                    
+                    // If order is fulfilled but no date is available, show approximate date
+                    if (index === 1 && !item.date && (status === 'FULFILLED' || status === 'fulfilled' || status === 'DELIVERED')) {
+                        displayDate = formatDate(new Date().toISOString());
+                    }
+                    
                     timelineHtml += `
                         <div class="timeline-item${item.active ? ' active' : ''}">
                             <div class="timeline-content">
-                                <div class="timeline-date">${item.date ? formatDate(item.date) : 'Pending'}</div>
+                                <div class="timeline-date">${displayDate}</div>
                                 <div class="timeline-status">${item.text}</div>
                             </div>
                         </div>
@@ -697,8 +711,8 @@
                         });
                         
                         html += `
-                             <div class="tracking-section" style="margin-top: 20px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                                 <h3>Track AWB Number <span class="badge jne-badge">JNE</span></h3>
+                             <div class="tracking-section" style="margin-top: 20px;">
+                                 <h3>Track AWB Number</h3>
                                  <p>Enter the AWB number and the last 5 digits of the phone number used when ordering:</p>
                                  <div class="form-group">
                                      <label for="resi">AWB Number</label>
