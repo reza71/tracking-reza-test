@@ -435,39 +435,39 @@
             const orderParam = urlParams.get('order');
             
             // Toggle debug mode
-            debugToggle.addEventListener('click', function() {
-                debugMode = !debugMode;
-                debugInfo.classList.toggle('hidden', !debugMode);
-                debugToggle.textContent = debugMode ? 'Hide Debug Info' : 'Show Debug Info';
+            //debugToggle.addEventListener('click', function() {
+               // debugMode = !debugMode;
+               // debugInfo.classList.toggle('hidden', !debugMode);
+               // debugToggle.textContent = debugMode ? 'Hide Debug Info' : 'Show Debug Info';
                 
-                if (debugMode) {
-                    addDebugInfo('Debug mode enabled');
-                }
+               // if (debugMode) {
+               //     addDebugInfo('Debug mode enabled');
+               // }
             });
             
-            function addDebugInfo(message) {
-                if (!debugMode) return;
+           // function addDebugInfo(message) {
+               // if (!debugMode) return;
                 
-                const timestamp = new Date().toLocaleTimeString();
-                const debugMessage = `[${timestamp}] ${message}`;
+             //   const timestamp = new Date().toLocaleTimeString();
+             //   const debugMessage = `[${timestamp}] ${message}`;
                 
-                debugInfo.innerHTML += debugMessage + '<br>';
-                debugInfo.scrollTop = debugInfo.scrollHeight;
-            }
+           //     debugInfo.innerHTML += debugMessage + '<br>';
+            //    debugInfo.scrollTop = debugInfo.scrollHeight;
+           // }
             
             // Auto-fill if URL parameters exist
-            if (orderParam) {
-                orderInput.value = orderParam;
-                addDebugInfo(`Auto-filled order number from URL: ${orderParam}`);
-            }
+         //   if (orderParam) {
+          //      orderInput.value = orderParam;
+          //      addDebugInfo(`Auto-filled order number from URL: ${orderParam}`);
+         //   }
             
-            // Auto-track if order parameter exists
-            if (orderParam) {
-                autoTrackNotice.classList.remove('hidden');
-                setTimeout(() => {
-                    trackOrder();
-                }, 1000);
-            }
+          //  // Auto-track if order parameter exists
+          //  if (orderParam) {
+          //      autoTrackNotice.classList.remove('hidden');
+           //     setTimeout(() => {
+           //         trackOrder();
+            //    }, 1000);
+         //   }
             
             // Function to get status class based on order status
             function getStatusClass(status) {
