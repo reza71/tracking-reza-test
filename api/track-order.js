@@ -124,15 +124,14 @@ export default async function handler(req, res) {
     
     // Ekstrak informasi yang diperlukan
     const result = {
-      orderNumber: order.name,
-  status: order.fulfillment_status || order.financial_status,
-tags: order.tags,  // ← Remove this duplicate line
+  orderNumber: order.name,
   customerName: order.email || 'Customer information not available',
   status: order.displayFulfillmentStatus || 'UNKNOWN',
-      trackingInfo: [],
-      orderDate: order.createdAt,
-      totalAmount: order.totalPriceSet?.shopMoney?.amount || '0',
-      currency: order.totalPriceSet?.shopMoney?.currencyCode || 'USD'
+  tags: order.tags || '',  // ← Only include once
+  trackingInfo: [],
+  orderDate: order.createdAt,
+  totalAmount: order.totalPriceSet?.shopMoney?.amount || '0',
+  currency: order.totalPriceSet?.shopMoney?.currencyCode || 'USD'
     };
 
     // Ambil informasi tracking dari fulfillments
@@ -155,6 +154,7 @@ tags: order.tags,  // ← Remove this duplicate line
     res.status(500).json({ error: 'An error occurred while retrieving order data' });
   }
 }
+
 
 
 
