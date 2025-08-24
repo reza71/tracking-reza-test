@@ -399,32 +399,34 @@
     <header>
         <div class="container">
             <div class="header-content">
-               <a href="https://makethemjealous.co.id">
-                    <img src="https://makethemjealous.co.id/cdn/shop/files/CleanShot_2024-12-26_at_11.09.57_2x-removebg-preview.png?v=1735558038&width=195"
-                         alt="Make Them Jealous"
+                <a href="https://makethemjealous.co.id">
+                    <img src="https://makethemjealous.co.id/cdn/shop/files/CleanShot_2024-12-26_at_11.09.57_2x-removebg-preview.png?v=1735558038&width=195" 
+                         alt="Make Them Jealous" 
                          class="logo">
                 </a>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <main class="main-content">
-            <section class="tracking-section">
-                <h2 class="section-title">Track Your Order</h2>
+    <div class="container">
+        <div class="main-content">
+            <div class="tracking-section">
+                <h2 class="section-title">Check Order</h2>
                 
                 <div id="autoTrackNotice" class="info-note hidden">
                     <p>🔍<strong>Auto-tracking order...</strong></p>
                 </div>
                 
                 <div class="form-group">
-                    <input type="text" id="orderNumber" class="form-control" placeholder="Enter your order number (e.g., #12345)">
+                    <input type="text" id="orderNumber" class="form-control" placeholder="Enter order number">
                 </div>
                 
                 <button id="trackBtn" class="btn">Track Order</button>
-            </section>
+            </div>
             
-            <section id="result" class="hidden">
-            </section>
-        </main>
+            <div id="result" class="hidden">
+            </div>
+        </div>
     </div>
 
     <footer>
@@ -433,15 +435,6 @@
         </div>
     </footer>
 
-    <!-- Custom Modal for Alerts/Confirms -->
-    <div id="customModal" class="modal">
-        <div class="modal-content">
-            <p id="modalMessage"></p>
-            <div id="modalButtons" class="modal-buttons">
-            </div>
-        </div>
-    </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const orderInput = document.getElementById('orderNumber');
@@ -449,47 +442,9 @@
             const resultDiv = document.getElementById('result');
             const autoTrackNotice = document.getElementById('autoTrackNotice');
             
-            const customModal = document.getElementById('customModal');
-            const modalMessage = document.getElementById('modalMessage');
-            const modalButtons = document.getElementById('modalButtons');
-            
+            let currentOrderData = null;
             let currentResi = '';
             
-            // Function to show custom modal
-            function showModal(message, options = {}) {
-                modalMessage.textContent = message;
-                modalButtons.innerHTML = ''; // Clear previous buttons
-
-                if (options.type === 'confirm') {
-                    const confirmBtn = document.createElement('button');
-                    confirmBtn.textContent = 'Yes, Confirm';
-                    confirmBtn.classList.add('btn');
-                    confirmBtn.addEventListener('click', () => {
-                        customModal.classList.remove('show');
-                        if (options.onConfirm) options.onConfirm();
-                    });
-
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.textContent = 'Cancel';
-                    cancelBtn.classList.add('btn', 'btn-cancel');
-                    cancelBtn.addEventListener('click', () => {
-                        customModal.classList.remove('show');
-                    });
-
-                    modalButtons.appendChild(confirmBtn);
-                    modalButtons.appendChild(cancelBtn);
-
-                } else { // Default to alert
-                    const okBtn = document.createElement('button');
-                    okBtn.textContent = 'OK';
-                    okBtn.classList.add('btn');
-                    okBtn.addEventListener('click', () => customModal.classList.remove('show'));
-                    modalButtons.appendChild(okBtn);
-                }
-
-                customModal.classList.add('show');
-            }
-
             // Parse URL parameters for auto-fill
             const urlParams = new URLSearchParams(window.location.search);
             const orderParam = urlParams.get('order');
@@ -549,6 +504,16 @@
                 }
             }
             
+            // Format currency
+            function formatCurrency(amount, currency) {
+                if (!amount) return 'Not available';
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: currency || 'IDR',
+                    minimumFractionDigits: 0
+                }).format(amount);
+            }
+            
             // Find fulfillment date from order data
             function findFulfillmentDate(data) {
                 if (data.fulfillmentDate) return data.fulfillmentDate;
@@ -601,17 +566,19 @@
                 const timelineItems = [
                     { 
                         date: orderDate, 
-                        text: 'Order Placed',
-                        active: true 
+                        text: 'Order placed',
+                        active: true // Order placed is always active
                     },
                     { 
                         date: fulfillmentDate, 
                         text: 'Order Shipped',
+                        // HANYA aktif jika status FULFILLED atau fulfilled (tidak termasuk DELIVERED)
                         active: status === 'FULFILLED' || status === 'fulfilled'
                     },
                     { 
                         date: deliveredDate, 
                         text: 'Order Delivered',
+                        // HANYA aktif jika status DELIVERED
                         active: status === 'DELIVERED'
                     }
                 ];
@@ -619,8 +586,10 @@
                 let timelineHtml = '<div class="timeline">';
                 
                 timelineItems.forEach((item, index) => {
+                    // For the shipped status, if we don't have a date but status is fulfilled, show current date
                     let displayDate = item.date ? formatDate(item.date) : 'Pending';
                     
+                    // If order is fulfilled but no date is available, show approximate date
                     if (index === 1 && !item.date && (status === 'FULFILLED' || status === 'fulfilled')) {
                         displayDate = formatDate(new Date().toISOString());
                     }
@@ -644,10 +613,11 @@
                 const orderNumber = orderInput.value.trim();
                 
                 if (!orderNumber) {
-                    showModal('Please enter your order number first.');
+                    alert('Please enter your order number first');
                     return;
                 }
                 
+                // Show loading
                 resultDiv.innerHTML = `
                     <div class="loading">
                         <div class="spinner"></div>
@@ -656,6 +626,7 @@
                 `;
                 resultDiv.classList.remove('hidden');
                 
+                // Disable button temporarily
                 trackBtn.disabled = true;
                 
                 try {
@@ -682,16 +653,19 @@
                         return;
                     }
                     
+                    currentOrderData = data;
+                    
                     const fulfillmentDate = findFulfillmentDate(data);
                     const deliveredDate = findDeliveredDate(data);
                     
                     const hasDeliveredTag = data.tags && data.tags.includes('Delivered');
-                    const isDelivered = data.status === 'DELIVERED' ||
-                                        (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
-                                        hasDeliveredTag;
+                    const isDelivered = data.status === 'DELIVERED' || 
+                                      (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
+                                      hasDeliveredTag;
                     
                     if (isDelivered && data.status !== 'DELIVERED') {
                         data.status = 'DELIVERED';
+                        // Update delivered date if not already set
                         if (!deliveredDate) {
                             data.deliveredDate = new Date().toISOString();
                         }
@@ -703,11 +677,15 @@
                                 <h2 class="order-number">Order ${data.orderNumber}</h2>
                                 <span class="order-status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span>
                             </div>
-                            <div class="order-details">${buildTimeline(data)}</div>
                     `;
                     
+                    // Add the timeline section
+                    html += `<div class="order-details">${buildTimeline(data)}</div>`;
+
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
-                        html += `<div class="mt-8">`;
+                         html += `
+                             <h3 style="margin-top: 20px;">Shipping Details</h3>
+                         `;
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
                                 <div class="detail-item">
@@ -719,31 +697,31 @@
                                     <p class="detail-value">${tracking.number}</p>
                                 </div>
                             `;
+                            
                             if (index === 0) {
                                 currentResi = tracking.number;
                             }
                         });
-                        html += `</div>`;
                         
                         html += `
-                            <div class="tracking-section mt-8">
-                                <h3 class="font-semibold text-lg mb-2">Track AWB Number</h3>
-                                <p class="text-sm text-gray-600 mb-4">Enter the AWB number and the last 5 digits of the phone number used when ordering:</p>
-                                <div class="form-group">
-                                    <label for="resi" class="block text-sm font-medium text-gray-700 mb-1">AWB Number</label>
-                                    <input type="text" id="resi" class="form-control" placeholder="Enter AWB number" value="${currentResi}">
-                                </div>
-                                <div class="form-group">
-                                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Last 5 Digits of Phone Number</label>
-                                    <input type="text" id="phone" class="form-control" placeholder="Last 5 digits" maxlength="5">
-                                </div>
-                                <button id="cekResiBtn" class="btn">Track AWB</button>
-                            </div>
+                             <div class="tracking-section" style="margin-top: 20px;">
+                                 <h3>Track AWB Number</h3>
+                                 <p>Enter the AWB number and the last 5 digits of the phone number used when ordering:</p>
+                                 <div class="form-group">
+                                     <label for="resi">AWB Number</label>
+                                     <input type="text" id="resi" class="form-control" placeholder="Enter AWB number" value="${currentResi}">
+                                 </div>
+                                 <div class="form-group">
+                                     <label for="phone">Last 5 Digits of Phone Number</label>
+                                     <input type="text" id="phone" class="form-control" placeholder="Last 5 digits" maxlength="5">
+                                 </div>
+                                 <button id="cekResiBtn" class="btn">Track AWB</button>
+                             </div>
                         `;
                     } else {
                         html += `
-                            <div class="info-note mt-8">
-                                <p>No shipping information is available for this order yet.</p>
+                            <div class="info-note">
+                                <p>No shipping information available for this order yet.</p>
                                 <p>Your order is being processed. You will receive an email notification when it's shipped.</p>
                             </div>
                         `;
@@ -751,9 +729,9 @@
                     
                     if ((data.status === 'FULFILLED' || data.status === 'fulfilled') && !isDelivered) {
                         html += `
-                            <div class="delivery-confirmation mt-8">
-                                <h3 class="font-semibold text-lg mb-2">Confirm Order Receipt</h3>
-                                <p class="text-sm text-gray-600 mb-4">If you have received your order, please confirm by clicking the button below:</p>
+                            <div class="delivery-confirmation mt-20">
+                                <h3>Confirm Order Receipt</h3>
+                                <p>If you have received your order, please confirm by clicking the button below:</p>
                                 <div class="action-buttons">
                                     <button class="btn" onclick="confirmDelivery('${data.orderNumber}')">I Have Received My Order</button>
                                 </div>
@@ -762,8 +740,9 @@
                     }
                     
                     html += `
-                        <div class="mt-8 pt-4 border-t border-border-color text-center">
-                            <p class="text-sm text-gray-500"><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
+                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+                                <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
+                            </div>
                         </div>
                     </div>`;
                     
@@ -773,14 +752,14 @@
                     console.error('Error:', error);
                     resultDiv.innerHTML = `
                         <div class="error">
-                            <p>Failed to retrieve order data. Please make sure the order number is correct.</p>
-                            <p>Error: ${error.message}</p>
+                            <p>${error.message || 'Failed to retrieve order data. Please make sure the order number is correct.'}</p>
                             <p>Please try again or contact hello@makethemjealous.co.id.</p>
                         </div>
                     `;
                 } finally {
                     trackBtn.disabled = false;
                     autoTrackNotice.classList.add('hidden');
+                    // Add event listener for the new "Track AWB" button
                     const newCekResiBtn = document.getElementById('cekResiBtn');
                     if (newCekResiBtn) {
                         newCekResiBtn.addEventListener('click', trackAwb);
@@ -788,67 +767,74 @@
                 }
             }
             
-            window.confirmDelivery = function(orderNumber) {
-                showModal('Are you sure you have received this order?', {
-                    type: 'confirm',
-                    onConfirm: async () => {
-                        const confirmationDiv = document.querySelector('.delivery-confirmation') || resultDiv;
-                        confirmationDiv.innerHTML = `
-                            <div class="loading">
-                                <div class="spinner"></div>
-                                <p>Confirming receipt and updating Shopify...</p>
-                            </div>
-                        `;
-                        
-                        try {
-                            const API_URL = 'https://mtj-tracking-orders.vercel.app/api/confirm-delivery';
-                            
-                            const response = await fetch(API_URL, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ 
-                                    order_number: orderNumber.replace('#', '')
-                                })
-                            });
-                            
-                            const data = await response.json();
-                            
-                            if (!response.ok) {
-                                throw new Error(data.error || `HTTP error! status: ${response.status}`);
-                            }
-                            
-                            if (data.error) {
-                                confirmationDiv.innerHTML = `<div class="error">${data.error}</div>`;
-                                return;
-                            }
-                            
-                            confirmationDiv.innerHTML = `
-                                <div class="success-message">
-                                    <i class="fas fa-check-circle"></i>
-                                    <div>
-                                        <p>Thank you! Order receipt confirmation successful.</p>
-                                        <p>The "Delivered" tag has been added to your order.</p>
-                                    </div>
-                                </div>
-                            `;
-                            
-                            setTimeout(() => {
-                                trackOrder();
-                            }, 2000);
-                            
-                        } catch (error) {
-                            console.error('Error:', error);
-                            confirmationDiv.innerHTML = `
-                                <div class="error">
-                                    <p>Failed to confirm receipt: ${error.message}</p>
-                                    <p>Please try again or contact hello@makethemjealous.co.id.</p>
-                                </div>
-                            `;
-                        }
+            window.confirmDelivery = async function(orderNumber) {
+                if (!confirm('Are you sure you have received this order?')) return;
+                
+                try {
+                    const confirmationDiv = document.querySelector('.delivery-confirmation') || resultDiv;
+                    confirmationDiv.innerHTML = `
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Confirming receipt and updating Shopify...</p>
+                        </div>
+                    `;
+                    
+                    const API_URL = 'https://mtj-tracking-orders.vercel.app/api/confirm-delivery';
+                    
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            order_number: orderNumber.replace('#', '')
+                        })
+                    });
+                    
+                    const contentType = response.headers.get('content-type');
+                    let data;
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        throw new Error(`Server returned HTML instead of JSON`);
                     }
-                });
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                    }
+                    
+                    if (data.error) {
+                        confirmationDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                        return;
+                    }
+                    
+                    confirmationDiv.innerHTML = `
+                        <div class="success-message">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <p>Thank you! Order receipt confirmation successful.</p>
+                                <p>The "Delivered" tag has been added to your order in our system.</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        trackOrder();
+                    }, 2000);
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    const confirmationDiv = document.querySelector('.delivery-confirmation') || resultDiv;
+                    
+                    confirmationDiv.innerHTML = `
+                        <div class="error">
+                            <p>Failed to confirm receipt: ${error.message}</p>
+                            <p>Please try again or contact hello@makethemjealous.co.id.</p>
+                        </div>
+                    `;
+                }
             };
 
             function trackAwb() {
@@ -858,12 +844,12 @@
                 let phone = phoneInput.value.trim();
                 
                 if (resi === "" || phone === "") {
-                    showModal("Please enter the AWB number and last 5 digits of your phone number.");
+                    alert("Please enter the AWB number and last 5 digits of your phone number.");
                     return;
                 }
                 
                 if (phone.length !== 5 || isNaN(phone)) {
-                    showModal("Please enter the last 5 digits of your phone number correctly.");
+                    alert("Please enter the last 5 digits of your phone number correctly.");
                     return;
                 }
                 
@@ -871,6 +857,7 @@
                 window.open(jneUrl, '_blank');
             }
             
+            // Event listener for track button
             trackBtn.addEventListener('click', trackOrder);
             
             orderInput.addEventListener('keypress', function(e) {
