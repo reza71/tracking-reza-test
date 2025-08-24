@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Track Your Order - MAKE THEM JEALOUS</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
+    <style>
 /* Jangan ubah bagian ini */
 :root {
     --primary: #000000;
@@ -58,8 +58,6 @@ header {
     height: 40px;
 }
  
-/* --- START: GANTI KODE DI BAWAH INI --- */
-
 /* Main Content */
 .main-content {
     padding: 40px 0;
@@ -565,27 +563,41 @@ footer {
                     
                     const hasDeliveredTag = data.tags && data.tags.includes('Delivered');
                     const isDelivered = data.status === 'DELIVERED' || 
-                                     (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
-                                     hasDeliveredTag;
+                                       (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
+                                       hasDeliveredTag;
                     
                     if (isDelivered && data.status !== 'DELIVERED') {
                         data.status = 'DELIVERED';
                     }
                     
                     let html = `
-                        <div class="tracking-section">
-                            <h2>Order Information #${data.orderNumber}</h2>
-                            <div class="tracking-info">
-                                <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
-                                <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
-                                <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
+                        <div class="order-card">
+                            <div class="order-header">
+                                <h2 class="order-number">Order #${data.orderNumber}</h2>
+                                <span class="order-status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span>
+                            </div>
+                            <div class="order-details">
+                                <div class="detail-item">
+                                    <p class="detail-label">Order Date</p>
+                                    <p class="detail-value">${formatDate(data.orderDate)}</p>
+                                </div>
+                                <div class="detail-item">
+                                    <p class="detail-label">Total Amount</p>
+                                    <p class="detail-value">${formatCurrency(data.totalAmount, data.currency)}</p>
+                                </div>
                     `;
                     
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
-                                <p><strong>Shipping Service:</strong> ${tracking.company}</p>
-                                <p><strong>AWB Number:</strong> ${tracking.number}</p>
+                                <div class="detail-item">
+                                    <p class="detail-label">Shipping Service</p>
+                                    <p class="detail-value">${tracking.company}</p>
+                                </div>
+                                <div class="detail-item">
+                                    <p class="detail-label">AWB Number</p>
+                                    <p class="detail-value">${tracking.number}</p>
+                                </div>
                             `;
                             
                             if (index === 0) {
@@ -607,7 +619,7 @@ footer {
                     
                     if ((data.status === 'FULFILLED' || data.status === 'fulfilled') && !isDelivered) {
                         html += `
-                            <div class="delivery-confirmation">
+                            <div class="delivery-confirmation mt-20">
                                 <h3>Confirm Order Receipt</h3>
                                 <p>If you have received your order, please confirm by clicking the button below:</p>
                                 <div class="action-buttons">
@@ -618,10 +630,10 @@ footer {
                     }
                     
                     html += `
-                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
-                            <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
+                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+                                <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
+                            </div>
                         </div>
-                    </div>
                     </div>`;
                     
                     resultDiv.innerHTML = html;
