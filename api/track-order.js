@@ -44,6 +44,7 @@ export default async function handler(req, res) {
               createdAt
               displayFulfillmentStatus
               fulfillments(first: 5) {
+              createdAt
                 trackingInfo {
                   company
                   number
@@ -152,3 +153,4 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'An error occurred while retrieving order data' });
   }
 }
+
