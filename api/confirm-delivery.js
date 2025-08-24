@@ -20,8 +20,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'order_number is required' });
     }
 
-    const shop = process.env.SHOPIFY_SHOP;
-    const token = process.env.SHOPIFY_ADMIN_API_TOKEN;
+    const shop = process.env.SHOPIFY_STORE_DOMAIN;
+    const token = process.env.SHOPIFY_ADMIN_API_KEY;
     
     // Check if environment variables are set
     if (!shop || !token) {
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     }
 
     // 1. Search for order by name
-    const searchUrl = `https://${shop}/admin/api/2024-01/orders.json?name=${encodeURIComponent('#' + order_number)}`;
+    const searchUrl = `https://${shop}/admin/api/2025-07/orders.json?name=${encodeURIComponent('#' + order_number)}`;
     console.log('Searching for order:', searchUrl);
     
     const searchRes = await fetch(searchUrl, {
