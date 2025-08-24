@@ -516,20 +516,20 @@
             
             // Find fulfillment date from order data
             function findFulfillmentDate(data) {
-                if (data.fulfillmentDate) return data.fulfillmentDate;
-                if (data.fulfilled_at) return data.fulfilled_at;
-                if (data.shippingDate) return data.shippingDate;
-                
-                // Check if we have tracking info with dates
-                if (data.trackingInfo && data.trackingInfo.length > 0) {
-                    for (const tracking of data.trackingInfo) {
-                        if (tracking.date) return tracking.date;
-                        if (tracking.shippingDate) return tracking.shippingDate;
-                    }
-                }
-                
-                return null;
-            }
+  if (data.fulfillmentDate) return data.fulfillmentDate; // dari API
+  if (data.fulfilled_at) return data.fulfilled_at;       // format lama
+  if (data.shippingDate) return data.shippingDate;       // kemungkinan field lain
+  
+  // cek kalau ada tracking info yang nyimpen tanggal
+  if (data.trackingInfo && data.trackingInfo.length > 0) {
+    for (const tracking of data.trackingInfo) {
+      if (tracking.date) return tracking.date;
+      if (tracking.shippingDate) return tracking.shippingDate;
+    }
+  }
+
+  return null; // fallback terakhir
+}
             
             // Find delivered date from order data
             function findDeliveredDate(data) {
