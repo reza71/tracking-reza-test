@@ -329,7 +329,7 @@
         }
         
         @keyframes spin {
-            0% { transform: rotate(0deg); }
+           0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
         
@@ -381,7 +381,7 @@
             background-color: #e74c3c;
             color: white;
             padding: 3px 8px;
-            borderRadius: 4px;
+            border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
             margin-left: 5px;
@@ -511,19 +511,6 @@
                     }
                 }
                 
-                // Check for events in the order timeline
-                if (data.events && data.events.length > 0) {
-                    for (const event of data.events) {
-                        if (event.includes('fulfilled') || event.includes('shipping confirmation')) {
-                            // Try to extract date from event
-                            const dateMatch = event.match(/(August|September|October|November|December|January|February|March|April|May|June|July) (\d{1,2}),? (\d{4})/);
-                            if (dateMatch) {
-                                return new Date(dateMatch[0]).toISOString();
-                            }
-                        }
-                    }
-                }
-                
                 return null;
             }
             
@@ -536,19 +523,6 @@
                 if (data.tags && data.tags.includes('Delivered')) {
                     // If we have a delivered tag but no specific date, use current date
                     return new Date().toISOString();
-                }
-                
-                // Check for delivery events in the order timeline
-                if (data.events && data.events.length > 0) {
-                    for (const event of data.events) {
-                        if (event.includes('delivered') || event.includes('Delivered')) {
-                            // Try to extract date from event
-                            const dateMatch = event.match(/(August|September|October|November|December|January|February|March|April|May|June|July) (\d{1,2}),? (\d{4})/);
-                            if (dateMatch) {
-                                return new Date(dateMatch[0]).toISOString();
-                            }
-                        }
-                    }
                 }
                 
                 return null;
@@ -581,11 +555,13 @@
                     { 
                         date: fulfillmentDate, 
                         text: 'Order Shipped',
+                        // HANYA aktif jika status FULFILLED atau fulfilled (tidak termasuk DELIVERED)
                         active: status === 'FULFILLED' || status === 'fulfilled'
                     },
                     { 
                         date: deliveredDate, 
                         text: 'Order Delivered',
+                        // HANYA aktif jika status DELIVERED
                         active: status === 'DELIVERED'
                     }
                 ];
@@ -597,7 +573,7 @@
                     let displayDate = item.date ? formatDate(item.date) : 'Pending';
                     
                     // If order is fulfilled but no date is available, show approximate date
-                    if (index === 1 && !item.date && (status === 'FULFILLED' || status === 'fulfilled' || status === 'DELIVERED')) {
+                    if (index === 1 && !item.date && (status === 'FULFILLED' || status === 'fulfilled')) {
                         displayDate = formatDate(new Date().toISOString());
                     }
                     
