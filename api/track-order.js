@@ -132,6 +132,7 @@ export default async function handler(req, res) {
       tags: order.tags || '',
       trackingInfo: [],
       orderDate: order.createdAt,
+      fulfillmentDate: order.fulfillments?.[0]?.createdAt || null, // <-- ADD THIS
       totalAmount: order.totalPriceSet?.shopMoney?.amount || '0',
       currency: order.totalPriceSet?.shopMoney?.currencyCode || 'USD'
     };
@@ -157,3 +158,4 @@ export default async function handler(req, res) {
   }
 }
 // ← NOTHING SHOULD BE AFTER THIS LINE! ←
+
