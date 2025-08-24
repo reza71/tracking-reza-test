@@ -43,8 +43,9 @@ export default async function handler(req, res) {
               email
               createdAt
               displayFulfillmentStatus
+              tags
               fulfillments(first: 5) {
-              createdAt
+                createdAt
                 trackingInfo {
                   company
                   number
@@ -124,14 +125,14 @@ export default async function handler(req, res) {
     
     // Ekstrak informasi yang diperlukan
     const result = {
-  orderNumber: order.name,
-  customerName: order.email || 'Customer information not available',
-  status: order.displayFulfillmentStatus || 'UNKNOWN',
-  tags: order.tags || '',  // ← Only include once
-  trackingInfo: [],
-  orderDate: order.createdAt,
-  totalAmount: order.totalPriceSet?.shopMoney?.amount || '0',
-  currency: order.totalPriceSet?.shopMoney?.currencyCode || 'USD'
+      orderNumber: order.name,
+      customerName: order.email || 'Customer information not available',
+      status: order.displayFulfillmentStatus || 'UNKNOWN',
+      tags: order.tags || '',
+      trackingInfo: [],
+      orderDate: order.createdAt,
+      totalAmount: order.totalPriceSet?.shopMoney?.amount || '0',
+      currency: order.totalPriceSet?.shopMoney?.currencyCode || 'USD'
     };
 
     // Ambil informasi tracking dari fulfillments
@@ -154,8 +155,4 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'An error occurred while retrieving order data' });
   }
 }
-
-
-
-
-
+// ← NOTHING SHOULD BE AFTER THIS LINE! ←
