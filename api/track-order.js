@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     // Konfigurasi dari environment variables
     const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
     const adminApiKey = process.env.SHOPIFY_ADMIN_API_KEY;
-    const apiVersion = process.env.SHOPIFY_API_VERSION;
+    const apiVersion = process.env.env.SHOPIFY_API_VERSION;
 
     if (!shopifyDomain || !adminApiKey || !apiVersion) {
       console.error('Missing environment variables');
@@ -33,6 +33,7 @@ export default async function handler(req, res) {
     const cleanOrderNumber = orderNumber.replace('#', '');
 
     // Query GraphQL untuk dapatkan data order
+    // Menambahkan `updatedAt` di dalam `fulfillments`
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -45,12 +46,15 @@ export default async function handler(req, res) {
               displayFulfillmentStatus
               tags
               fulfillments(first: 5) {
+                id
+                status
                 createdAt
+                updatedAt  // <-- Menambahkan `updatedAt` untuk menemukan fulfillment terbaru
                 trackingInfo {
                   company
                   number
+                  url
                 }
-                status
               }
               totalPriceSet {
                 shopMoney {
@@ -91,8 +95,6 @@ export default async function handler(req, res) {
     // Cek jika ada error dari GraphQL
     if (data.errors) {
       console.error('GraphQL errors:', data.errors);
-      
-      // Filter out ACCESS_DENIED errors
       const nonAccessErrors = data.errors.filter(error => 
         !error.message.includes('Customer object')
       );
@@ -114,38 +116,45 @@ export default async function handler(req, res) {
       const providedEmail = customerEmail.toLowerCase().trim();
       const orderEmail = order.email.toLowerCase().trim();
       
-      // Basic email validation - bisa juga validasi nomor telepon di sini
       if (!providedEmail.includes('@')) {
-        // Mungkin ini nomor telepon, skip validation untuk sekarang
         console.log('Phone number provided instead of email, skipping email validation');
       } else if (orderEmail !== providedEmail) {
         return res.status(403).json({ error: 'Email does not match order records' });
       }
+    }
+
+    // Cari fulfillment yang paling baru dan berhasil
+    let latestValidFulfillment = null;
+    if (order.fulfillments && order.fulfillments.length > 0) {
+      // Urutkan fulfillment berdasarkan tanggal terbaru
+      order.fulfillments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      // Cari fulfillment pertama yang memiliki status SUCCESS atau FULFILLED
+      latestValidFulfillment = order.fulfillments.find(f => f.status === 'SUCCESS' || f.status === 'FULFILLED');
     }
     
     // Ekstrak informasi yang diperlukan
     const result = {
       orderNumber: order.name,
       customerName: order.email || 'Customer information not available',
-      status: order.displayFulfillmentStatus || 'UNKNOWN',
+      // Menggunakan status dari fulfillment terbaru jika ada, jika tidak, gunakan displayFulfillmentStatus
+      status: latestValidFulfillment?.status || order.displayFulfillmentStatus || 'UNKNOWN',
       tags: order.tags || '',
       trackingInfo: [],
       orderDate: order.createdAt,
+      shippingDate: latestValidFulfillment?.createdAt || null, // <-- Tambahkan tanggal pengiriman di sini
       totalAmount: order.totalPriceSet?.shopMoney?.amount || '0',
       currency: order.totalPriceSet?.shopMoney?.currencyCode || 'USD'
     };
 
-    // Ambil informasi tracking dari fulfillments
-    if (order.fulfillments && order.fulfillments.length > 0) {
-      order.fulfillments.forEach(fulfillment => {
-        if (fulfillment.trackingInfo && fulfillment.trackingInfo.length > 0) {
-          fulfillment.trackingInfo.forEach(tracking => {
-            result.trackingInfo.push({
-              company: "JNE", // Always set to JNE
-              number: tracking.number
-            });
-          });
-        }
+    // Ambil informasi tracking dari fulfillment yang valid
+    if (latestValidFulfillment && latestValidFulfillment.trackingInfo && latestValidFulfillment.trackingInfo.length > 0) {
+      latestValidFulfillment.trackingInfo.forEach(tracking => {
+        result.trackingInfo.push({
+          company: "JNE", 
+          number: tracking.number,
+          date: latestValidFulfillment.createdAt // <-- Tanggal dari fulfillment yang valid
+        });
       });
     }
 
@@ -155,4 +164,3 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'An error occurred while retrieving order data' });
   }
 }
-// ← NOTHING SHOULD BE AFTER THIS LINE! ←
