@@ -131,26 +131,28 @@
     </style>
 </head>
 <body>
-    <div class="logo-container">
+    <div style="text-align: center;">
         <a href="https://makethemjealous.co.id">
             <img src="https://makethemjealous.co.id/cdn/shop/files/CleanShot_2024-12-26_at_11.09.57_2x-removebg-preview.png?v=1735558038&width=195" 
                  alt="Make Them Jealous" 
                  class="logo">
         </a>
-        <h1>Order Tracking</h1>
     </div>
 
     <div class="container">
         <div id="autoTrackNotice" class="info-note hidden">
-            <p>🔍 <strong>Auto-tracking order...</strong></p>
+            <p>🔍<strong>Auto-tracking order...</strong></p>
         </div>
         
         <div class="form-group">
-            <label for="orderNumber">Order Number (e.g., 1321)</label>
+            <label for="orderNumber">Order Number</label>
             <input type="text" id="orderNumber" placeholder="Enter order number">
         </div>
         
         <button id="trackBtn">Track Order</button>
+        
+        <button id="debugToggle" class="debug-toggle">Show Debug Info</button>
+        <div id="debugInfo" class="debug-info hidden"></div>
     </div>
 
     <div id="result" class="container hidden">
@@ -184,21 +186,42 @@
             const phoneInput = document.getElementById('phone');
             const cekResiBtn = document.getElementById('cekResiBtn');
             const autoTrackNotice = document.getElementById('autoTrackNotice');
+            const debugToggle = document.getElementById('debugToggle');
+            const debugInfo = document.getElementById('debugInfo');
             
             let currentOrderData = null;
             let currentResi = '';
+            let debugMode = false;
             
             // Parse URL parameters for auto-fill
             const urlParams = new URLSearchParams(window.location.search);
             const orderParam = urlParams.get('order');
-            const emailParam = urlParams.get('email');
+            
+            // Toggle debug mode
+            debugToggle.addEventListener('click', function() {
+                debugMode = !debugMode;
+                debugInfo.classList.toggle('hidden', !debugMode);
+                debugToggle.textContent = debugMode ? 'Hide Debug Info' : 'Show Debug Info';
+                
+                if (debugMode) {
+                    addDebugInfo('Debug mode enabled');
+                }
+            });
+            
+            function addDebugInfo(message) {
+                if (!debugMode) return;
+                
+                const timestamp = new Date().toLocaleTimeString();
+                const debugMessage = `[${timestamp}] ${message}`;
+                
+                debugInfo.innerHTML += debugMessage + '<br>';
+                debugInfo.scrollTop = debugInfo.scrollHeight;
+            }
             
             // Auto-fill if URL parameters exist
             if (orderParam) {
                 orderInput.value = orderParam;
-            }
-            if (emailParam) {
-                // Not used in this version but kept for compatibility
+                addDebugInfo(`Auto-filled order number from URL: ${orderParam}`);
             }
             
             // Auto-track if order parameter exists
@@ -297,6 +320,8 @@
                     return;
                 }
                 
+                addDebugInfo(`Tracking order: ${orderNumber}`);
+                
                 // Show loading
                 resultDiv.innerHTML = `
                     <div class="loading">
@@ -312,6 +337,7 @@
                 try {
                     // Use the correct Vercel domain
                     const API_URL = 'https://mtj-tracking-orders.vercel.app/api/track-order';
+                    addDebugInfo(`Calling API: ${API_URL}`);
                     
                     const response = await fetch(API_URL, {
                         method: 'POST',
@@ -323,7 +349,10 @@
                         })
                     });
                     
+                    addDebugInfo(`API response status: ${response.status}`);
+                    
                     const data = await response.json();
+                    addDebugInfo(`API response data: ${JSON.stringify(data).substring(0, 200)}...`);
                     
                     if (!response.ok) {
                         throw new Error(data.error || `HTTP error! status: ${response.status}`);
@@ -347,11 +376,12 @@
                     // If delivered, update status
                     if (isDelivered && data.status !== 'DELIVERED') {
                         data.status = 'DELIVERED';
+                        addDebugInfo(`Order marked as delivered based on shipping date`);
                     }
                     
                     // Display order information
                     let html = `
-                        <h2>Order Information ${data.orderNumber}</h2>
+                        <h2>Order Information #${data.orderNumber}</h2>
                         <div class="tracking-info">
                             <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
                             <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
@@ -362,7 +392,7 @@
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
-                                <p><strong>Shipping Service:</strong> ${tracking.company} <span class="badge jne-badge">JNE</span></p>
+                                <p><strong>Shipping Service:</strong> ${tracking.company}</p>
                                 <p><strong>AWB Number:</strong> ${tracking.number}</p>
                                 <p><strong>Shipping Date:</strong> ${formatDate(fulfillmentDate)}</p>
                             `;
@@ -378,24 +408,7 @@
                         resiInput.value = currentResi;
                         
                         // Add shipping timeline
-                        html += `
-                            <div class="timeline">
-                                <div class="timeline-item">
-                                    <div class="timeline-dot"></div>
-                                    <div class="timeline-content">
-                                        <strong>Order Processed</strong>
-                                        <div class="timeline-date">${formatDate(data.orderDate)}</div>
-                                    </div>
-                                </div>
-                                <div class="timeline-item">
-                                    <div class="timeline-dot"></div>
-                                    <div class="timeline-content">
-                                        <strong>Order Shipped</strong>
-                                        <div class="timeline-date">${formatDate(fulfillmentDate)}</div>
-                                        <p>AWB Number: ${currentResi}</p>
-                                    </div>
-                                </div>
-                        `;
+
                         
                         // If status delivered, add to timeline
                         if (data.status === 'DELIVERED') {
@@ -447,6 +460,7 @@
                     
                 } catch (error) {
                     console.error('Error:', error);
+                    addDebugInfo(`Error: ${error.message}`);
                     resultDiv.innerHTML = `
                         <div class="error">
                             <p>${error.message || 'Failed to retrieve order data. Please make sure the order number is correct.'}</p>
@@ -474,8 +488,11 @@
                         </div>
                     `;
                     
+                    addDebugInfo(`Confirming delivery for order: ${orderNumber}`);
+                    
                     // Send confirmation to server
                     const API_URL = 'https://mtj-tracking-orders.vercel.app/api/confirm-delivery';
+                    addDebugInfo(`Calling delivery API: ${API_URL}`);
                     
                     const response = await fetch(API_URL, {
                         method: 'POST',
@@ -483,9 +500,11 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({ 
-                            order_number: orderNumber // Using the correct parameter name for your API
+                            order_number: orderNumber
                         })
                     });
+                    
+                    addDebugInfo(`Delivery API response status: ${response.status}`);
                     
                     // Check if response is JSON or HTML
                     const contentType = response.headers.get('content-type');
@@ -493,10 +512,12 @@
                     
                     if (contentType && contentType.includes('application/json')) {
                         data = await response.json();
+                        addDebugInfo(`Delivery API response data: ${JSON.stringify(data)}`);
                     } else {
                         // If server returns HTML instead of JSON, try to parse as text
                         const text = await response.text();
-                        throw new Error(`Server returned HTML: ${text.substring(0, 100)}...`);
+                        addDebugInfo(`Server returned HTML: ${text.substring(0, 200)}...`);
+                        throw new Error(`Server returned HTML instead of JSON`);
                     }
                     
                     if (!response.ok) {
@@ -517,6 +538,8 @@
                         </div>
                     `;
                     
+                    addDebugInfo(`Delivery confirmed successfully for order: ${orderNumber}`);
+                    
                     // Refresh the order data to show updated status
                     setTimeout(() => {
                         trackOrder();
@@ -524,12 +547,14 @@
                     
                 } catch (error) {
                     console.error('Error:', error);
+                    addDebugInfo(`Delivery confirmation error: ${error.message}`);
                     const confirmationDiv = document.querySelector('.delivery-confirmation') || resultDiv;
                     
                     confirmationDiv.innerHTML = `
                         <div class="error">
                             <p>Failed to confirm receipt: ${error.message}</p>
                             <p>Please try again or contact hello@makethemjealous.co.id.</p>
+                            <p>Note: This feature requires proper server configuration.</p>
                         </div>
                     `;
                 }
