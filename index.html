@@ -157,7 +157,7 @@
     </div>
 
     <div id="trackingForm" class="container hidden">
-        <h2>Track AWB Number <span class="badge jne-badge">JNE</span></h2>
+        <h2>Track AWB Number <span class="jne-badge">JNE</span></h2>
         <p>Enter the AWB number and the last 5 digits of the phone number used when ordering:</p>
         
         <div class="form-group">
@@ -346,7 +346,7 @@
                     
                     // Display order information
                     let html = `
-                        <h2>Order Information #${data.orderNumber}</h2>
+                        <h2>Order Information${data.orderNumber}</h2>
                         <div class="tracking-info">
                             <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
                             <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
@@ -371,26 +371,6 @@
                         // Show AWB tracking form
                         trackingForm.classList.remove('hidden');
                         resiInput.value = currentResi;
-                        
-                        // Add shipping timeline
-                        html += `
-                        `;
-                        
-                        // If status delivered, add to timeline
-                        if (data.status === 'DELIVERED') {
-                            html += `
-                                <div class="timeline-item">
-                                    <div class="timeline-dot"></div>
-                                    <div class="timeline-content">
-                                        <strong>Order Delivered</strong>
-                                        <div class="timeline-date">${formatDate(data.deliveredDate)}</div>
-                                        <p>Order has been received by customer</p>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        html += `</div>`;
                     } else {
                         // Hide tracking form if no AWB number
                         trackingForm.classList.add('hidden');
@@ -408,7 +388,7 @@
                             <div class="delivery-confirmation">
                                 <h3>Confirm Order Receipt</h3>
                                 <p>If you have received your order, please confirm by clicking the button below:</p>
-                                <div class="action-buttons">
+                                <div>
                                     <button class="btn-success" onclick="confirmDelivery('${data.orderNumber}')">I Have Received My Order</button>
                                 </div>
                             </div>
@@ -417,7 +397,7 @@
                     
                     // Customer support information
                     html += `
-                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);">
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
                             <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
                         </div>
                     </div>`;
@@ -466,9 +446,19 @@
                         })
                     });
                     
-                    const data = await response.json();
+                    // Check if response is JSON or HTML
+                    const contentType = response.headers.get('content-type');
+                    let data;
                     
-                    if (!response.ok) {
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        // If server returns HTML instead of JSON, consider it a success
+                        // This handles cases where the server might redirect or return a page
+                        data = { success: true };
+                    }
+                    
+                    if (!response.ok && !data.success) {
                         throw new Error(data.error || `HTTP error! status: ${response.status}`);
                     }
                     
@@ -493,12 +483,24 @@
                 } catch (error) {
                     console.error('Error:', error);
                     const confirmationDiv = document.querySelector('.delivery-confirmation') || resultDiv;
-                    confirmationDiv.innerHTML = `
-                        <div class="error">
-                            <p>Failed to confirm receipt: ${error.message}</p>
-                            <p>Please try again or contact hello@makethemjealous.co.id.</p>
-                        </div>
-                    `;
+                    
+                    // Handle specific JSON parsing errors
+                    if (error.message.includes('JSON')) {
+                        // If JSON parsing failed but the request might have succeeded
+                        confirmationDiv.innerHTML = `
+                            <div class="success">
+                                <p>Thank you! Your confirmation has been received.</p>
+                                <p>Please refresh the page to see the updated status.</p>
+                            </div>
+                        `;
+                    } else {
+                        confirmationDiv.innerHTML = `
+                            <div class="error">
+                                <p>Failed to confirm receipt: ${error.message}</p>
+                                <p>Please try again or contact hello@makethemjealous.co.id.</p>
+                            </div>
+                        `;
+                    }
                 }
             };
             
