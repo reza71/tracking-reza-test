@@ -346,7 +346,7 @@
                     
                     // Display order information
                     let html = `
-                        <h2>Order Information${data.orderNumber}</h2>
+                        <h2>Order Information #${data.orderNumber}</h2>
                         <div class="tracking-info">
                             <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
                             <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
@@ -475,10 +475,12 @@
                         </div>
                     `;
                     
-                    // Refresh order data
+                    // Force a complete refresh of the order data
                     setTimeout(() => {
+                        // Clear the current order data to force a fresh fetch
+                        currentOrderData = null;
                         trackOrder();
-                    }, 2000);
+                    }, 1500);
                     
                 } catch (error) {
                     console.error('Error:', error);
@@ -493,6 +495,12 @@
                                 <p>Please refresh the page to see the updated status.</p>
                             </div>
                         `;
+                        
+                        // Force a complete refresh after a delay
+                        setTimeout(() => {
+                            currentOrderData = null;
+                            trackOrder();
+                        }, 2000);
                     } else {
                         confirmationDiv.innerHTML = `
                             <div class="error">
