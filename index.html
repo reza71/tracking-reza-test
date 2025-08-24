@@ -346,7 +346,7 @@
                     
                     // Display order information
                     let html = `
-                        <h2>Order Information #${data.orderNumber}</h2>
+                        <h2>Order Information${data.orderNumber}</h2>
                         <div class="tracking-info">
                             <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
                             <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
@@ -394,6 +394,13 @@
                             </div>
                         `;
                     }
+                    
+                    // Information about delivery confirmation
+                    html += `
+                        <div class="info">
+                            <p><strong>Note:</strong> Delivery confirmation helps us improve our service. Your order status in our system may not update immediately.</p>
+                        </div>
+                    `;
                     
                     // Customer support information
                     html += `
@@ -454,7 +461,6 @@
                         data = await response.json();
                     } else {
                         // If server returns HTML instead of JSON, consider it a success
-                        // This handles cases where the server might redirect or return a page
                         data = { success: true };
                     }
                     
@@ -467,20 +473,14 @@
                         return;
                     }
                     
-                    // Show success message
+                    // Show success message with explanation
                     confirmationDiv.innerHTML = `
                         <div class="success">
-                            <p>Thank you! Order receipt confirmation successful.</p>
-                            <p>Order status has been updated to "Delivered".</p>
+                            <p>Thank you for confirming your order receipt!</p>
+                            <p>Your confirmation has been recorded. While our system may not immediately update the status to "Delivered", our team has been notified.</p>
+                            <p>If you have any questions, please contact hello@makethemjealous.co.id</p>
                         </div>
                     `;
-                    
-                    // Force a complete refresh of the order data
-                    setTimeout(() => {
-                        // Clear the current order data to force a fresh fetch
-                        currentOrderData = null;
-                        trackOrder();
-                    }, 1500);
                     
                 } catch (error) {
                     console.error('Error:', error);
@@ -491,16 +491,11 @@
                         // If JSON parsing failed but the request might have succeeded
                         confirmationDiv.innerHTML = `
                             <div class="success">
-                                <p>Thank you! Your confirmation has been received.</p>
-                                <p>Please refresh the page to see the updated status.</p>
+                                <p>Thank you for confirming your order receipt!</p>
+                                <p>Your confirmation has been recorded. While our system may not immediately update the status to "Delivered", our team has been notified.</p>
+                                <p>If you have any questions, please contact hello@makethemjealous.co.id</p>
                             </div>
                         `;
-                        
-                        // Force a complete refresh after a delay
-                        setTimeout(() => {
-                            currentOrderData = null;
-                            trackOrder();
-                        }, 2000);
                     } else {
                         confirmationDiv.innerHTML = `
                             <div class="error">
