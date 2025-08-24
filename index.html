@@ -311,168 +311,175 @@
                 return daysSinceFulfillment > 3;
             }
             
-            // Function to track order
-            async function trackOrder() {
-                const orderNumber = orderInput.value.trim();
+// Function to track order
+async function trackOrder() {
+    const orderNumber = orderInput.value.trim();
+    
+    if (!orderNumber) {
+        alert('Please enter your order number first');
+        return;
+    }
+    
+    addDebugInfo(`Tracking order: ${orderNumber}`);
+    
+    // Show loading
+    resultDiv.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Searching for order data...</p>
+        </div>
+    `;
+    resultDiv.classList.remove('hidden');
+    
+    // Disable button temporarily
+    trackBtn.disabled = true;
+    
+    try {
+        // Use the correct Vercel domain
+        const API_URL = 'https://mtj-tracking-orders.vercel.app/api/track-order';
+        addDebugInfo(`Calling API: ${API_URL}`);
+        
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                orderNumber: orderNumber
+            })
+        });
+        
+        addDebugInfo(`API response status: ${response.status}`);
+        
+        const data = await response.json();
+        addDebugInfo(`API response data: ${JSON.stringify(data).substring(0, 200)}...`);
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        if (data.error) {
+            resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
+            return;
+        }
+        
+        // Save order data for later use
+        currentOrderData = data;
+        
+        // Find fulfillment date from various possible fields
+        const fulfillmentDate = findFulfillmentDate(data);
+        
+        // Check if status is delivered based on time OR if order has "Delivered" tag
+        const hasDeliveredTag = data.tags && data.tags.includes('Delivered');
+        const isDelivered = data.status === 'DELIVERED' || 
+                          (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
+                          hasDeliveredTag;
+        
+        // If delivered, update status
+        if (isDelivered && data.status !== 'DELIVERED') {
+            data.status = 'DELIVERED';
+            addDebugInfo(`Order marked as delivered based on shipping date or Delivered tag`);
+        }
+        
+        // Display order information
+        let html = `
+            <h2>Order Information ${data.orderNumber}</h2>
+            <div class="tracking-info">
+                <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
+                <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
+                <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
+        `;
+        
+        // Show tag information if available
+        if (data.tags) {
+            html += `<p><strong>Tags:</strong> ${data.tags}</p>`;
+        }
+        
+        // If shipped, display shipping information
+        if (data.trackingInfo && data.trackingInfo.length > 0) {
+            data.trackingInfo.forEach((tracking, index) => {
+                html += `
+                    <p><strong>Shipping Service:</strong> ${tracking.company}</p>
+                    <p><strong>AWB Number:</strong> ${tracking.number}</p>
+                    <p><strong>Shipping Date:</strong> ${formatDate(fulfillmentDate)}</p>
+                `;
                 
-                if (!orderNumber) {
-                    alert('Please enter your order number first');
-                    return;
+                // Save the first tracking number for later use
+                if (index === 0) {
+                    currentResi = tracking.number;
                 }
-                
-                addDebugInfo(`Tracking order: ${orderNumber}`);
-                
-                // Show loading
-                resultDiv.innerHTML = `
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p>Searching for order data...</p>
+            });
+            
+            // Show AWB tracking form
+            trackingForm.classList.remove('hidden');
+            resiInput.value = currentResi;
+            
+            // If status delivered, add to timeline
+            if (data.status === 'DELIVERED') {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <strong>Order Delivered</strong>
+                            <div class="timeline-date">${new Date().toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            })}</div>
+                            <p>Order has been received by customer</p>
+                        </div>
                     </div>
                 `;
-                resultDiv.classList.remove('hidden');
-                
-                // Disable button temporarily
-                trackBtn.disabled = true;
-                
-                try {
-                    // Use the correct Vercel domain
-                    const API_URL = 'https://mtj-tracking-orders.vercel.app/api/track-order';
-                    addDebugInfo(`Calling API: ${API_URL}`);
-                    
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ 
-                            orderNumber: orderNumber
-                        })
-                    });
-                    
-                    addDebugInfo(`API response status: ${response.status}`);
-                    
-                    const data = await response.json();
-                    addDebugInfo(`API response data: ${JSON.stringify(data).substring(0, 200)}...`);
-                    
-                    if (!response.ok) {
-                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-                    }
-                    
-                    if (data.error) {
-                        resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
-                        return;
-                    }
-                    
-                    // Save order data for later use
-                    currentOrderData = data;
-                    
-                    // Find fulfillment date from various possible fields
-                    const fulfillmentDate = findFulfillmentDate(data);
-                    
-                    // Check if status is delivered based on time
-                    const isDelivered = data.status === 'DELIVERED' || 
-                                      (fulfillmentDate && checkIfDelivered(fulfillmentDate));
-                    
-                    // If delivered, update status
-                    if (isDelivered && data.status !== 'DELIVERED') {
-                        data.status = 'DELIVERED';
-                        addDebugInfo(`Order marked as delivered based on shipping date`);
-                    }
-                    
-                    // Display order information
-                    let html = `
-                        <h2>Order Information ${data.orderNumber}</h2>
-                        <div class="tracking-info">
-                            <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
-                            <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
-                            <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
-                    `;
-                    
-                    // If shipped, display shipping information
-                    if (data.trackingInfo && data.trackingInfo.length > 0) {
-                        data.trackingInfo.forEach((tracking, index) => {
-                            html += `
-                                <p><strong>Shipping Service:</strong> ${tracking.company}</p>
-                                <p><strong>AWB Number:</strong> ${tracking.number}</p>
-                                <p><strong>Shipping Date:</strong> ${formatDate(fulfillmentDate)}</p>
-                            `;
-                            
-                            // Save the first tracking number for later use
-                            if (index === 0) {
-                                currentResi = tracking.number;
-                            }
-                        });
-                        
-                        // Show AWB tracking form
-                        trackingForm.classList.remove('hidden');
-                        resiInput.value = currentResi;
-                        
-                        // Add shipping timeline
-
-                        
-                        // If status delivered, add to timeline
-                        if (data.status === 'DELIVERED') {
-                            html += `
-                                <div class="timeline-item">
-                                    <div class="timeline-dot"></div>
-                                    <div class="timeline-content">
-                                        <strong>Order Delivered</strong>
-                                        <div class="timeline-date">${formatDate(data.deliveredDate)}</div>
-                                        <p>Order has been received by customer</p>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        html += `</div>`;
-                    } else {
-                        // Hide tracking form if no AWB number
-                        trackingForm.classList.add('hidden');
-                        html += `
-                            <div class="info-note">
-                                <p>No shipping information available for this order yet.</p>
-                                <p>Your order is being processed. You will receive an email notification when it's shipped.</p>
-                            </div>
-                        `;
-                    }
-                    
-                    // If status fulfilled but not delivered, show delivery confirmation option
-                    if ((data.status === 'FULFILLED' || data.status === 'fulfilled') && !isDelivered) {
-                        html += `
-                            <div class="delivery-confirmation">
-                                <h3>Confirm Order Receipt</h3>
-                                <p>If you have received your order, please confirm by clicking the button below:</p>
-                                <div class="action-buttons">
-                                    <button class="btn-success" onclick="confirmDelivery('${data.orderNumber}')">I Have Received My Order</button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    // Customer support information
-                    html += `
-                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);">
-                            <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
-                        </div>
-                    </div>`;
-                    
-                    resultDiv.innerHTML = html;
-                    
-                } catch (error) {
-                    console.error('Error:', error);
-                    addDebugInfo(`Error: ${error.message}`);
-                    resultDiv.innerHTML = `
-                        <div class="error">
-                            <p>${error.message || 'Failed to retrieve order data. Please make sure the order number is correct.'}</p>
-                            <p>Please try again or contact hello@makethemjealous.co.id.</p>
-                        </div>
-                    `;
-                } finally {
-                    // Re-enable button
-                    trackBtn.disabled = false;
-                    autoTrackNotice.classList.add('hidden');
-                }
             }
+        } else {
+            // Hide tracking form if no AWB number
+            trackingForm.classList.add('hidden');
+            html += `
+                <div class="info-note">
+                    <p>No shipping information available for this order yet.</p>
+                    <p>Your order is being processed. You will receive an email notification when it's shipped.</p>
+                </div>
+            `;
+        }
+        
+        // If status fulfilled but not delivered, show delivery confirmation option
+        if ((data.status === 'FULFILLED' || data.status === 'fulfilled') && !isDelivered) {
+            html += `
+                <div class="delivery-confirmation">
+                    <h3>Confirm Order Receipt</h3>
+                    <p>If you have received your order, please confirm by clicking the button below:</p>
+                    <div class="action-buttons">
+                        <button class="btn-success" onclick="confirmDelivery('${data.orderNumber}')">I Have Received My Order</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Customer support information
+        html += `
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);">
+                <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
+            </div>
+        </div>`;
+        
+        resultDiv.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        addDebugInfo(`Error: ${error.message}`);
+        resultDiv.innerHTML = `
+            <div class="error">
+                <p>${error.message || 'Failed to retrieve order data. Please make sure the order number is correct.'}</p>
+                <p>Please try again or contact hello@makethemjealous.co.id.</p>
+            </div>
+        `;
+    } finally {
+        // Re-enable button
+        trackBtn.disabled = false;
+        autoTrackNotice.classList.add('hidden');
+    }
+}
             
             // Function to confirm delivery
             window.confirmDelivery = async function(orderNumber) {
