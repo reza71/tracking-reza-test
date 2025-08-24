@@ -137,7 +137,7 @@
                  alt="Make Them Jealous" 
                  class="logo">
         </a>
-        <h1>Order Tracking</h1>
+     <h2>Check Order</h2>
     </div>
 
     <div class="container">
@@ -358,7 +358,8 @@
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
-                                <p><strong>Shipping Date:</strong> ${formatDate(fulfillmentDate)}</p>
+                                <p><strong>Shipping Service:</strong> ${tracking.company}</p>
+                                <p><strong>AWB Number:</strong> ${tracking.number}</p>
                             `;
                             
                             // Save the first tracking number for later use
