@@ -358,8 +358,6 @@
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
-                                <p><strong>Shipping Service:</strong> ${tracking.company} <span class="badge jne-badge">JNE</span></p>
-                                <p><strong>AWB Number:</strong> ${tracking.number}</p>
                                 <p><strong>Shipping Date:</strong> ${formatDate(fulfillmentDate)}</p>
                             `;
                             
@@ -375,13 +373,6 @@
                         
                         // Add shipping timeline
                         html += `
-                                <div class="timeline-item">
-                                    <div class="timeline-dot"></div>
-                                    <div class="timeline-content">
-                                        <strong>Order Shipped</strong>
-                                        <div class="timeline-date">${formatDate(fulfillmentDate)}</div>
-                                    </div>
-                                </div>
                         `;
                         
                         // If status delivered, add to timeline
