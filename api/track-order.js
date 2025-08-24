@@ -153,4 +153,15 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'An error occurred while retrieving order data' });
   }
 }
+// Check if status is delivered based on time OR if order has "Delivered" tag
+const hasDeliveredTag = data.tags && data.tags.includes('Delivered');
+const isDelivered = data.status === 'DELIVERED' || 
+                  (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
+                  hasDeliveredTag;
+
+// If delivered, update status
+if (isDelivered && data.status !== 'DELIVERED') {
+    data.status = 'DELIVERED';
+    addDebugInfo(`Order marked as delivered based on shipping date or Delivered tag`);
+}
 
