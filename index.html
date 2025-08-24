@@ -411,7 +411,7 @@
     <div class="container">
         <div class="main-content">
             <div class="tracking-section">
-                <h2 class="section-title">Check Order Status</h2>
+                <h2 class="section-title">Check Order</h2>
                 
                 <div id="autoTrackNotice" class="info-note hidden">
                     <p>🔍<strong>Auto-tracking order...</strong></p>
@@ -444,6 +444,23 @@
             
             let currentOrderData = null;
             let currentResi = '';
+            
+            // Parse URL parameters for auto-fill
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderParam = urlParams.get('order');
+            
+            // Auto-fill if URL parameters exist
+            if (orderParam) {
+                orderInput.value = orderParam;
+            }
+            
+            // Auto-track if order parameter exists
+            if (orderParam) {
+                autoTrackNotice.classList.remove('hidden');
+                setTimeout(() => {
+                    trackOrder();
+                }, 1000);
+            }
             
             // Function to get status class based on order status
             function getStatusClass(status) {
@@ -770,7 +787,7 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({ 
-                            order_number: orderNumber
+                            order_number: orderNumber.replace('#', '')
                         })
                     });
                     
