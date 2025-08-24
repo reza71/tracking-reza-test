@@ -23,7 +23,6 @@ export default async function handler(req, res) {
     const shop = process.env.SHOPIFY_STORE_DOMAIN;
     const token = process.env.SHOPIFY_ADMIN_API_KEY;
     
-    // Check if environment variables are set
     if (!shop || !token) {
       console.error('Missing environment variables');
       return res.status(500).json({ 
@@ -31,8 +30,12 @@ export default async function handler(req, res) {
       });
     }
 
+    // ✅ Normalize order number
+    let cleanOrderNumber = order_number.replace(/#/g, "");
+    cleanOrderNumber = `#${cleanOrderNumber}`;
+
     // 1. Search for order by name
-    const searchUrl = `https://${shop}/admin/api/2025-07/orders.json?name=${encodeURIComponent('#' + order_number)}`;
+    const searchUrl = `https://${shop}/admin/api/2025-07/orders.json?name=${encodeURIComponent(cleanOrderNumber)}`;
     console.log('Searching for order:', searchUrl);
     
     const searchRes = await fetch(searchUrl, {
@@ -68,7 +71,7 @@ export default async function handler(req, res) {
     }
 
     // 4. Update order with new tags
-    const updateUrl = `https://${shop}/admin/api/2024-01/orders/${orderId}.json`;
+    const updateUrl = `https://${shop}/admin/api/2025-07/orders/${orderId}.json`;
     console.log('Updating order:', updateUrl);
     
     const updateRes = await fetch(updateUrl, {
@@ -98,7 +101,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: `Order #${order_number} updated with Delivered tag`,
+      message: `Order ${cleanOrderNumber} updated with Delivered tag`,
       order: updateData.order,
     });
     
