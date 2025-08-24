@@ -406,7 +406,7 @@ async function trackOrder() {
                 html += `
                     <p><strong>Shipping Service:</strong> ${tracking.company}</p>
                     <p><strong>AWB Number:</strong> ${tracking.number}</p>
-                    <p><strong>Shipping Date:</strong> ${formatDate(fulfillmentDate)}</p>
+                    <p><strong>Shipping Date:</strong> ${formatDate(order.fulfillments[0].createdAt)}</p>
                 `;
                 
                 // Save the first tracking number for later use
