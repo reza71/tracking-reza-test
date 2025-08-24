@@ -322,7 +322,7 @@
             font-weight: 600;
             margin: 10px 0;
             transition: all 0.3s;
-            width: 100%;
+            width: 0%;
         }
         
         .debug-toggle:hover {
@@ -348,23 +348,20 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header>
         <div class="container">
             <div class="header-content">
                 <a href="https://makethemjealous.co.id">
                     <img src="https://makethemjealous.co.id/cdn/shop/files/CleanShot_2024-12-26_at_11.09.57_2x-removebg-preview.png?v=1735558038&width=195" 
-                         alt="Make Them Jealous" 
-                         class="logo">
+                        alt="Make Them Jealous" 
+                        class="logo">
                 </a>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
     <div class="container">
         <div class="main-content">
-            <!-- Tracking Form Section -->
             <div class="tracking-section">
                 <h2 class="section-title">Check Order Status</h2>
                 
@@ -373,20 +370,15 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="orderNumber">Order Number</label>
                     <input type="text" id="orderNumber" class="form-control" placeholder="Enter order number">
                 </div>
                 
                 <button id="trackBtn" class="btn">Track Order</button>
-
             </div>
             
-            <!-- Results Container -->
             <div id="result" class="hidden">
-                <!-- Search results will be displayed here -->
-            </div>
+                </div>
 
-            <!-- Tracking Form (initially hidden) -->
             <div id="trackingForm" class="tracking-section hidden">
                 <h2>Track AWB Number <span class="badge jne-badge">JNE</span></h2>
                 <p>Enter the AWB number and the last 5 digits of the phone number used when ordering:</p>
@@ -406,7 +398,6 @@
         </div>
     </div>
 
-    <!-- Simple Footer -->
     <footer>
         <div class="container">
             <p>&copy; 2025 Make Them Jealous. All rights reserved.</p>
@@ -423,51 +414,9 @@
             const phoneInput = document.getElementById('phone');
             const cekResiBtn = document.getElementById('cekResiBtn');
             const autoTrackNotice = document.getElementById('autoTrackNotice');
-            const debugToggle = document.getElementById('debugToggle');
-            const debugInfo = document.getElementById('debugInfo');
             
             let currentOrderData = null;
             let currentResi = '';
-            let debugMode = false;
-            
-            // Parse URL parameters for auto-fill
-            const urlParams = new URLSearchParams(window.location.search);
-            const orderParam = urlParams.get('order');
-            
-            // Toggle debug mode
-            //debugToggle.addEventListener('click', function() {
-               // debugMode = !debugMode;
-               // debugInfo.classList.toggle('hidden', !debugMode);
-               // debugToggle.textContent = debugMode ? 'Hide Debug Info' : 'Show Debug Info';
-                
-               // if (debugMode) {
-               //     addDebugInfo('Debug mode enabled');
-               // }
-            });
-            
-           // function addDebugInfo(message) {
-               // if (!debugMode) return;
-                
-             //   const timestamp = new Date().toLocaleTimeString();
-             //   const debugMessage = `[${timestamp}] ${message}`;
-                
-           //     debugInfo.innerHTML += debugMessage + '<br>';
-            //    debugInfo.scrollTop = debugInfo.scrollHeight;
-           // }
-            
-            // Auto-fill if URL parameters exist
-         //   if (orderParam) {
-          //      orderInput.value = orderParam;
-          //      addDebugInfo(`Auto-filled order number from URL: ${orderParam}`);
-         //   }
-            
-          //  // Auto-track if order parameter exists
-          //  if (orderParam) {
-          //      autoTrackNotice.classList.remove('hidden');
-           //     setTimeout(() => {
-           //         trackOrder();
-            //    }, 1000);
-         //   }
             
             // Function to get status class based on order status
             function getStatusClass(status) {
@@ -523,7 +472,6 @@
             
             // Find fulfillment date from order data
             function findFulfillmentDate(data) {
-                // Check various possible locations for fulfillment date
                 if (data.fulfillmentDate) return data.fulfillmentDate;
                 if (data.fulfilled_at) return data.fulfilled_at;
                 if (data.shippingDate) return data.shippingDate;
@@ -544,7 +492,6 @@
                 const currentTime = new Date().getTime();
                 const daysSinceFulfillment = (currentTime - fulfillmentTime) / (1000 * 60 * 60 * 24);
                 
-                // If more than 3 days since shipping, consider as delivered
                 return daysSinceFulfillment > 3;
             }
             
@@ -556,8 +503,6 @@
                     alert('Please enter your order number first');
                     return;
                 }
-                
-                addDebugInfo(`Tracking order: ${orderNumber}`);
                 
                 // Show loading
                 resultDiv.innerHTML = `
@@ -572,9 +517,7 @@
                 trackBtn.disabled = true;
                 
                 try {
-                    // Use the correct Vercel domain
                     const API_URL = 'https://mtj-tracking-orders.vercel.app/api/track-order';
-                    addDebugInfo(`Calling API: ${API_URL}`);
                     
                     const response = await fetch(API_URL, {
                         method: 'POST',
@@ -586,10 +529,7 @@
                         })
                     });
                     
-                    addDebugInfo(`API response status: ${response.status}`);
-                    
                     const data = await response.json();
-                    addDebugInfo(`API response data: ${JSON.stringify(data).substring(0, 200)}...`);
                     
                     if (!response.ok) {
                         throw new Error(data.error || `HTTP error! status: ${response.status}`);
@@ -600,35 +540,28 @@
                         return;
                     }
                     
-                    // Save order data for later use
                     currentOrderData = data;
                     
-                    // Find fulfillment date from various possible fields
                     const fulfillmentDate = findFulfillmentDate(data);
                     
-                    // Check if status is delivered based on time OR if order has "Delivered" tag
                     const hasDeliveredTag = data.tags && data.tags.includes('Delivered');
                     const isDelivered = data.status === 'DELIVERED' || 
-                                      (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
-                                      hasDeliveredTag;
+                                     (fulfillmentDate && checkIfDelivered(fulfillmentDate)) ||
+                                     hasDeliveredTag;
                     
-                    // If delivered, update status
                     if (isDelivered && data.status !== 'DELIVERED') {
                         data.status = 'DELIVERED';
-                        addDebugInfo(`Order marked as delivered based on shipping date or Delivered tag`);
                     }
                     
-                    // Display order information
                     let html = `
                         <div class="tracking-section">
-                            <h2>Order Information ${data.orderNumber}</h2>
+                            <h2>Order Information #${data.orderNumber}</h2>
                             <div class="tracking-info">
                                 <p><strong>Order Date:</strong> ${formatDate(data.orderDate)}</p>
                                 <p><strong>Total Amount:</strong> ${formatCurrency(data.totalAmount, data.currency)}</p>
                                 <p><strong>Status:</strong> <span class="status ${getStatusClass(data.status)}">${getStatusText(data.status)}</span></p>
                     `;
                     
-                    // If shipped, display shipping information
                     if (data.trackingInfo && data.trackingInfo.length > 0) {
                         data.trackingInfo.forEach((tracking, index) => {
                             html += `
@@ -636,17 +569,14 @@
                                 <p><strong>AWB Number:</strong> ${tracking.number}</p>
                             `;
                             
-                            // Save the first tracking number for later use
                             if (index === 0) {
                                 currentResi = tracking.number;
                             }
                         });
                         
-                        // Show AWB tracking form
                         trackingForm.classList.remove('hidden');
                         resiInput.value = currentResi;
                     } else {
-                        // Hide tracking form if no AWB number
                         trackingForm.classList.add('hidden');
                         html += `
                             <div class="info-note">
@@ -656,7 +586,6 @@
                         `;
                     }
                     
-                    // If status fulfilled but not delivered, show delivery confirmation option
                     if ((data.status === 'FULFILLED' || data.status === 'fulfilled') && !isDelivered) {
                         html += `
                             <div class="delivery-confirmation">
@@ -669,7 +598,6 @@
                         `;
                     }
                     
-                    // Customer support information
                     html += `
                         <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
                             <p><strong>Need help?</strong> Contact us at hello@makethemjealous.co.id</p>
@@ -681,7 +609,6 @@
                     
                 } catch (error) {
                     console.error('Error:', error);
-                    addDebugInfo(`Error: ${error.message}`);
                     resultDiv.innerHTML = `
                         <div class="error">
                             <p>${error.message || 'Failed to retrieve order data. Please make sure the order number is correct.'}</p>
@@ -689,18 +616,15 @@
                         </div>
                     `;
                 } finally {
-                    // Re-enable button
                     trackBtn.disabled = false;
                     autoTrackNotice.classList.add('hidden');
                 }
             }
             
-            // Function to confirm delivery
             window.confirmDelivery = async function(orderNumber) {
                 if (!confirm('Are you sure you have received this order?')) return;
                 
                 try {
-                    // Show loading
                     const confirmationDiv = document.querySelector('.delivery-confirmation') || resultDiv;
                     confirmationDiv.innerHTML = `
                         <div class="loading">
@@ -709,11 +633,7 @@
                         </div>
                     `;
                     
-                    addDebugInfo(`Confirming delivery for order: ${orderNumber}`);
-                    
-                    // Send confirmation to server
                     const API_URL = 'https://mtj-tracking-orders.vercel.app/api/confirm-delivery';
-                    addDebugInfo(`Calling delivery API: ${API_URL}`);
                     
                     const response = await fetch(API_URL, {
                         method: 'POST',
@@ -725,19 +645,13 @@
                         })
                     });
                     
-                    addDebugInfo(`Delivery API response status: ${response.status}`);
-                    
-                    // Check if response is JSON or HTML
                     const contentType = response.headers.get('content-type');
                     let data;
                     
                     if (contentType && contentType.includes('application/json')) {
                         data = await response.json();
-                        addDebugInfo(`Delivery API response data: ${JSON.stringify(data)}`);
                     } else {
-                        // If server returns HTML instead of JSON, try to parse as text
                         const text = await response.text();
-                        addDebugInfo(`Server returned HTML: ${text.substring(0, 200)}...`);
                         throw new Error(`Server returned HTML instead of JSON`);
                     }
                     
@@ -750,7 +664,6 @@
                         return;
                     }
                     
-                    // Show success message
                     confirmationDiv.innerHTML = `
                         <div class="success-message">
                             <i class="fas fa-check-circle"></i>
@@ -761,16 +674,12 @@
                         </div>
                     `;
                     
-                    addDebugInfo(`Delivery confirmed successfully for order: ${orderNumber}`);
-                    
-                    // Refresh the order data to show updated status
                     setTimeout(() => {
                         trackOrder();
                     }, 2000);
                     
                 } catch (error) {
                     console.error('Error:', error);
-                    addDebugInfo(`Delivery confirmation error: ${error.message}`);
                     const confirmationDiv = document.querySelector('.delivery-confirmation') || resultDiv;
                     
                     confirmationDiv.innerHTML = `
@@ -795,24 +704,20 @@
                     return;
                 }
                 
-                // If user changed the AWB number, use the input value
                 if (!resi && currentResi) {
                     resi = currentResi;
                     resiInput.value = resi;
                 }
                 
-                // Validate last 5 digits of phone number
                 if (phone.length !== 5 || isNaN(phone)) {
                     alert("Please enter the last 5 digits of your phone number correctly.");
                     return;
                 }
                 
-                // Redirect to JNE tracking page
                 let jneUrl = `https://cekresi.jne.co.id/${resi}?verify=${phone}`;
                 window.open(jneUrl, '_blank');
             });
             
-            // Enter key support
             orderInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') trackOrder();
             });
