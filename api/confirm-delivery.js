@@ -15,11 +15,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { order_number } = req.body;
+    let { order_number } = req.body;
     
     if (!order_number) {
       return res.status(400).json({ error: 'order_number is required' });
     }
+
+    // Remove any existing # symbol to avoid double ##
+    order_number = order_number.replace(/^#/, '');
+    console.log('Processing order number:', order_number);
 
     // Use consistent environment variable names
     const shop = process.env.SHOPIFY_SHOP || process.env.SHOPIFY_STORE_DOMAIN;
@@ -41,7 +45,7 @@ export default async function handler(req, res) {
     let searchData;
     let order = null;
     
-    // Try with # prefix first
+    // Try with # prefix first (this is how Shopify stores it)
     let searchUrl = `https://${shop}/admin/api/${apiVersion}/orders.json?name=${encodeURIComponent('#' + order_number)}`;
     console.log('Searching for order with #:', searchUrl);
     
@@ -55,8 +59,11 @@ export default async function handler(req, res) {
 
     if (searchRes.ok) {
       searchData = await searchRes.json();
+      console.log('Search response:', JSON.stringify(searchData, null, 2));
+      
       if (searchData.orders && searchData.orders.length > 0) {
         order = searchData.orders[0];
+        console.log('Found order with #:', order.name);
       }
     }
 
@@ -75,18 +82,53 @@ export default async function handler(req, res) {
 
       if (searchRes.ok) {
         searchData = await searchRes.json();
+        console.log('Search response:', JSON.stringify(searchData, null, 2));
+        
         if (searchData.orders && searchData.orders.length > 0) {
           order = searchData.orders[0];
+          console.log('Found order without #:', order.name);
+        }
+      }
+    }
+
+    // If still not found, try using the Orders API with status=any
+    if (!order) {
+      searchUrl = `https://${shop}/admin/api/${apiVersion}/orders.json?status=any`;
+      console.log('Searching all orders:', searchUrl);
+      
+      searchRes = await fetch(searchUrl, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': token,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (searchRes.ok) {
+        searchData = await searchRes.json();
+        console.log('All orders response:', searchData.orders ? searchData.orders.length : 0, 'orders found');
+        
+        // Manual search through all orders
+        if (searchData.orders && searchData.orders.length > 0) {
+          order = searchData.orders.find(o => 
+            o.name === `#${order_number}` || 
+            o.name === order_number ||
+            o.order_number === parseInt(order_number)
+          );
+          
+          if (order) {
+            console.log('Found order in all orders:', order.name);
+          }
         }
       }
     }
 
     // If still not found, return error
     if (!order) {
-      console.error('Order not found with either format');
+      console.error('Order not found with any format');
       return res.status(404).json({ 
         error: 'Order not found',
-        details: `Searched for orders with name: #${order_number} and ${order_number}`
+        details: `Searched for orders with name: #${order_number} and ${order_number}. Check if the order exists in Shopify.`
       });
     }
 
@@ -99,6 +141,9 @@ export default async function handler(req, res) {
     // 3. Add Delivered tag if not already present
     if (!tags.includes('Delivered')) {
       tags.push('Delivered');
+      console.log('Adding Delivered tag to order');
+    } else {
+      console.log('Order already has Delivered tag');
     }
 
     // 4. Update order with new tags
@@ -129,10 +174,11 @@ export default async function handler(req, res) {
     }
 
     const updateData = await updateRes.json();
+    console.log('Order updated successfully:', updateData.order.name);
 
     return res.status(200).json({
       success: true,
-      message: `Order ${order.name} updated with Delivered tag`,
+      message: `Order ${updateData.order.name} updated with Delivered tag`,
       order: updateData.order,
     });
     
